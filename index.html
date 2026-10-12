@@ -185,6 +185,9 @@
             <p class="text-xs mt-0.5" style="color: var(--muted);">Track. Fix. Done.</p>
         </div>
         <div class="flex items-center gap-2">
+            <button id="bk-btn" class="bell-btn" title="Backup"><i class="fa-solid fa-file-export"></i></button>
+            <button id="rs-btn" class="bell-btn" title="Restore"><i class="fa-solid fa-file-import"></i></button>
+            <input type="file" id="rs-file" accept=".json,application/json" class="hidden">
             <button id="notif-btn" class="bell-btn" title="Notifications">
                 <i class="fa-solid fa-bell"></i>
             </button>
@@ -1133,6 +1136,34 @@ $installBtn.addEventListener('click', async () => {
         toast('App installed to home screen', 'success');
     }
     deferredInstallPrompt = null;
+});
+
+/* ===== Backup / Restore ===== */
+document.getElementById('bk-btn').addEventListener('click', async () => {
+    try {
+        const data = JSON.stringify({ app: 'MaintainLog', exportedAt: new Date().toISOString(), logs: await dbGetAll(), items: await sAll(ITEMS) });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+        a.download = 'maintainlog-backup.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        toast('Backup saved', 'success');
+    } catch (e) { toast('Backup failed', 'error'); }
+});
+document.getElementById('rs-btn').addEventListener('click', () => document.getElementById('rs-file').click());
+document.getElementById('rs-file').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try {
+        const d = JSON.parse(await f.text());
+        if (!Array.isArray(d.logs)) throw new Error('bad file');
+        for (const l of d.logs) { if (l && l.id) await dbPut(l); }
+        for (const it of (d.items || [])) { if (it && it.id) await sPut(ITEMS, it); }
+        await migrateItems();
+        await loadLogs(); await loadItems();
+        if (currentTab === 'items') renderItems(); else { renderFilters(); renderList(); }
+        toast(`Restored ${d.logs.length} logs`, 'success');
+        checkDue();
+    } catch (err) { toast('Restore failed: invalid file', 'error'); }
 });
 
 /* ===== Init ===== */
