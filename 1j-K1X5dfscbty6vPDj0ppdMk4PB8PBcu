@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0C0C0C">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MaintainLog">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <title>MaintainLog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Space Grotesk', 'sans-serif'],
+                    mono: ['JetBrains Mono', 'monospace']
+                }
+            }
+        }
+    }
+    </script>
+    <style>
+        :root {
+            --bg: #0C0C0C; --card: #141414; --elevated: #1C1C1C;
+            --fg: #EDEDED; --muted: #5A5A5A; --border: #262626;
+            --accent: #F59E0B; --accent-dim: rgba(245,158,11,0.12);
+            --active: #22C55E; --suspended: #F97316; --completed: #64748B;
+            --danger: #EF4444;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg); color: var(--fg);
+            margin: 0; min-height: 100dvh; overflow-x: hidden;
+            overscroll-behavior: none;
+            background-image: radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.04) 0%, transparent 60%);
+        }
+        .safe-top { padding-top: max(env(safe-area-inset-top, 12px), 12px); }
+        .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 20px), 20px); }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .log-card { border-left: 3px solid var(--status-color); transition: transform 0.15s, opacity 0.15s; }
+        .log-card:active { transform: scale(0.985); }
+        .modal-bg { background: rgba(0,0,0,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .sheet { transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); }
+        .sheet.open { transform: translateY(0); }
+        @keyframes toastIn { from { transform: translateY(120%); opacity:0; } to { transform: translateY(0); opacity:1; } }
+        @keyframes toastOut { from { transform: translateY(0); opacity:1; } to { transform: translateY(120%); opacity:0; } }
+        .toast-in { animation: toastIn 0.35s ease forwards; }
+        .toast-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes fabPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.35); } 50% { box-shadow: 0 0 0 14px rgba(245,158,11,0); } }
+        .fab-pulse { animation: fabPulse 2.5s ease-in-out infinite; }
+        @keyframes cardIn { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+        .card-in { animation: cardIn 0.35s ease forwards; }
+        @keyframes emptyBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .empty-bob { animation: emptyBob 3s ease-in-out infinite; }
+        @keyframes viewerIn { from { opacity:0; transform: scale(0.92); } to { opacity:1; transform: scale(1); } }
+        .viewer-in { animation: viewerIn 0.25s ease; }
+        .status-badge {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+            padding: 3px 8px; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .status-badge.active { background: rgba(34,197,94,0.14); color: #4ADE80; }
+        .status-badge.suspended { background: rgba(249,115,22,0.14); color: #FB923C; }
+        .status-badge.completed { background: rgba(100,116,139,0.14); color: #94A3B8; }
+        .filter-btn { transition: all 0.2s; position: relative; }
+        .filter-btn.on { color: var(--accent); }
+        .filter-btn.on::after {
+            content:''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+            width: 18px; height: 3px; background: var(--accent); border-radius: 3px;
+        }
+        input, textarea, select {
+            background: var(--elevated) !important; border: 1.5px solid var(--border) !important;
+            color: var(--fg) !important; border-radius: 10px !important; padding: 12px 14px !important;
+            font-family: 'Space Grotesk', sans-serif !important; font-size: 16px !important;
+            width: 100%; -webkit-appearance: none; appearance: none; transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus, select:focus { border-color: var(--accent) !important; outline: none !important; }
+        input::placeholder, textarea::placeholder { color: var(--muted) !important; }
+        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%235A5A5A' d='M5 7L0 2h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px !important; }
+        .img-label {
+            font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--accent);
+            background: var(--accent-dim); border: 1px solid rgba(245,158,11,0.18);
+            border-radius: 4px; padding: 2px 5px; display: inline-block;
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .camera-zone {
+            border: 2px dashed var(--border); border-radius: 10px; padding: 16px;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            color: var(--muted); transition: all 0.2s; cursor: pointer;
+        }
+        .camera-zone:active { border-color: var(--accent); color: var(--accent); }
+        button { -webkit-user-select: none; user-select: none; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+        /* ===== NEW: Items (shopping list) rows ===== */
+        .item-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; border-radius: 8px;
+            background: var(--elevated); border: 1px solid var(--border);
+            transition: opacity 0.15s;
+        }
+        .item-row input[type="checkbox"] {
+            width: 18px !important; height: 18px !important; accent-color: var(--accent);
+            margin: 0; cursor: pointer; padding: 0 !important; border: none !important;
+        }
+        .item-row.done .item-text { text-decoration: line-through; color: var(--muted); }
+        .item-row .item-text { flex: 1; font-size: 14px; cursor: pointer; word-break: break-word; }
+        .item-row .rm-item {
+            width: 22px; height: 22px; border-radius: 5px;
+            background: transparent; color: var(--danger); font-size: 12px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .card-items { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+        .card-items .item-row { padding: 6px 8px; }
+
+        .tab-btn {
+            flex: 1; padding: 9px 6px; border-radius: 10px; font-size: 12px; font-weight: 600;
+            background: var(--elevated); color: var(--muted); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .tab-btn.on { background: var(--accent-dim); color: var(--accent); border-color: rgba(245,158,11,0.35); }
+        .apt-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); background: var(--accent-dim); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+
+        /* ===== NEW: Due badge ===== */
+        .due-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+            padding: 3px 7px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+        }
+        .due-badge.soon { background: rgba(245,158,11,0.16); color: #FBBF24; }
+        .due-badge.overdue { background: rgba(239,68,68,0.18); color: #F87171; }
+        .due-badge.normal { background: rgba(56,189,248,0.12); color: #38BDF8; }
+
+        /* ===== NEW: Delete-all pill ===== */
+        .del-all-btn {
+            margin-left: auto; font-size: 11px; font-weight: 600;
+            padding: 5px 10px; border-radius: 6px;
+            background: rgba(239,68,68,0.10); color: var(--danger);
+            border: 1px solid rgba(239,68,68,0.22);
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px;
+            white-space: nowrap;
+        }
+        .del-all-btn:active { transform: scale(0.96); }
+        .del-all-btn.hidden { display: none; }
+
+        /* ===== NEW: Notification bell ===== */
+        .bell-btn {
+            position: relative; width: 32px; height: 32px;
+            border-radius: 8px; background: var(--elevated); color: var(--muted);
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+            transition: all 0.2s; border: 1px solid var(--border);
+        }
+        .bell-btn.on { color: var(--accent); border-color: rgba(245,158,11,0.3); }
+        .bell-btn.has-due::after {
+            content: ''; position: absolute; top: 5px; right: 5px;
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--danger); border: 1.5px solid var(--bg);
+            animation: fabPulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-wrap" class="fixed bottom-20 left-0 right-0 z-[999] flex flex-col items-center gap-2 pointer-events-none px-4"></div>
+
+<!-- Header -->
+<header class="safe-top sticky top-0 z-50 px-5 pt-3 pb-2" style="background: linear-gradient(to bottom, var(--bg) 60%, transparent);">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight" style="color: var(--accent);">
+                <i class="fa-solid fa-wrench mr-1 text-lg"></i> MaintainLog
+            </h1>
+            <p class="text-xs mt-0.5" style="color: var(--muted);">Track. Fix. Done.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="notif-btn" class="bell-btn" title="Notifications">
+                <i class="fa-solid fa-bell"></i>
+            </button>
+            <button id="install-btn" class="hidden text-xs font-semibold px-3 py-1.5 rounded-lg" style="background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(245,158,11,0.25);">
+                <i class="fa-solid fa-download mr-1"></i> Install
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Tabs -->
+<nav id="tabs" class="px-5 pt-1 pb-1 flex gap-2">
+    <button class="tab-btn on" data-tab="logs"><i class="fa-solid fa-clipboard-list"></i> Logs</button>
+    <button class="tab-btn" data-tab="makeready"><i class="fa-solid fa-broom"></i> Make Ready</button>
+    <button class="tab-btn" data-tab="items"><i class="fa-solid fa-cart-shopping"></i> Items Needed</button>
+</nav>
+
+<div id="logs-view">
+<!-- Stats -->
+<div id="stats-bar" class="px-5 py-2 flex gap-3 text-xs font-mono font-semibold flex-wrap"></div>
+
+<!-- Search -->
+<div class="px-5 py-1">
+    <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs" style="color: var(--muted);"></i>
+        <input id="search-input" type="search" placeholder="Search apartment or task..." class="!pl-9 !py-2.5 !text-sm !rounded-xl">
+    </div>
+</div>
+
+<!-- Filters + Delete All -->
+<div class="px-5 py-2 flex items-center gap-4 text-sm font-medium" style="color: var(--muted);">
+    <div id="filters" class="flex gap-4"></div>
+    <button id="del-all-btn" class="del-all-btn hidden">
+        <i class="fa-solid fa-trash-can"></i> <span id="del-all-label">Delete All</span>
+    </button>
+</div>
+
+<!-- Log List -->
+<main id="log-list" class="px-5 py-2 pb-28 flex flex-col gap-3"></main>
+
+<!-- Empty State -->
+<div id="empty-state" class="hidden flex-col items-center justify-center py-16 px-8 text-center">
+    <div class="empty-bob text-5xl mb-4" style="color: var(--muted);"><i class="fa-solid fa-clipboard-list"></i></div>
+    <p id="empty-title" class="text-lg font-semibold mb-1" style="color: var(--muted);">No logs yet</p>
+    <p id="empty-sub" class="text-sm" style="color: var(--border);">Tap the button below to add your first maintenance task</p>
+</div>
+
+</div>
+
+<!-- Items Needed (header section) -->
+<section id="items-view" class="hidden px-5 py-3 pb-28">
+    <div class="flex gap-2 mb-3">
+        <input id="i-text" type="text" placeholder="Item e.g. Air filter, Caulk...">
+        <input id="i-apt" type="text" placeholder="Apt" style="max-width: 90px;">
+        <button type="button" id="i-add" class="px-4 rounded-xl font-bold flex items-center justify-center flex-shrink-0" style="background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(245,158,11,0.25);"><i class="fa-solid fa-plus"></i></button>
+    </div>
+    <div class="flex items-center mb-2 text-xs font-mono" style="color: var(--muted);">
+        <span id="i-count"></span>
+        <button id="i-clear" class="del-all-btn hidden"><i class="fa-solid fa-broom"></i> Clear checked</button>
+    </div>
+    <div id="items-wrap" class="flex flex-col gap-2"></div>
+    <div id="items-empty" class="hidden text-center py-14" style="color: var(--muted);">
+        <div class="text-4xl mb-3"><i class="fa-solid fa-cart-shopping"></i></div>
+        <p class="text-sm font-semibold">Nothing needed</p>
+    </div>
+</section>
+
+<!-- FAB -->
+<button id="fab" class="fab-pulse fixed z-40 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold safe-bottom" style="background: var(--accent); color: #0C0C0C; right: 20px; bottom: 24px; box-shadow: 0 4px 24px rgba(245,158,11,0.3);">
+    <i class="fa-solid fa-plus"></i>
+</button>
+
+<!-- Bottom Sheet Modal -->
+<div id="modal-overlay" class="hidden fixed inset-0 z-50 modal-bg">
+    <div id="sheet" class="sheet fixed bottom-0 left-0 right-0 rounded-t-2xl max-h-[92dvh] overflow-y-auto safe-bottom" style="background: var(--card); border-top: 1px solid var(--border);">
+        <div class="sticky top-0 z-10 flex items-center justify-between px-5 py-3" style="background: var(--card); border-bottom: 1px solid var(--border);">
+            <h2 id="sheet-title" class="text-lg font-bold">New Log</h2>
+            <button id="sheet-close" class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--elevated); color: var(--muted);"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="log-form" class="px-5 py-4 flex flex-col gap-4">
+            <input type="hidden" id="f-id">
+            <input type="hidden" id="f-type" value="log">
+            <div>
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">APARTMENT NUMBER</label>
+                <input id="f-apt" type="text" placeholder="e.g. 4B, 201, PENT-3" required>
+            </div>
+            <div>
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">TASK / ISSUE</label>
+                <textarea id="f-task" rows="3" placeholder="Describe the maintenance task..." required></textarea>
+            </div>
+            <div id="who-wrap">
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">REQUESTED BY</label>
+                <input id="f-who" type="text" placeholder="Name of requester">
+            </div>
+            <div>
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">STATUS</label>
+                <select id="f-status">
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <!-- NEW: Due Date / Time -->
+            <div>
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">DUE DATE / TIME (OPTIONAL)</label>
+                <input id="f-due" type="datetime-local">
+                <p class="text-[11px] mt-1.5" style="color: var(--muted);"><i class="fa-solid fa-bell-on mr-1"></i>When this time approaches, you'll get a device notification (if enabled).</p>
+            </div>
+            <!-- Image Section -->
+            <div>
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">PHOTOS</label>
+                <div id="img-previews" class="flex flex-wrap gap-2 mb-2"></div>
+                <div class="flex gap-2">
+                    <label class="camera-zone flex-1">
+                        <i class="fa-solid fa-camera text-xl"></i>
+                        <span class="text-xs font-medium">Take Photo</span>
+                        <input id="f-camera" type="file" accept="image/*" capture="environment" class="hidden">
+                    </label>
+                    <label class="camera-zone flex-1">
+                        <i class="fa-solid fa-images text-xl"></i>
+                        <span class="text-xs font-medium">Gallery</span>
+                        <input id="f-gallery" type="file" accept="image/*" multiple class="hidden">
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="w-full py-3.5 rounded-xl font-bold text-base" style="background: var(--accent); color: #0C0C0C;">
+                <i class="fa-solid fa-floppy-disk mr-2"></i><span id="submit-text">Save Log</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation (single or bulk) -->
+<div id="delete-modal" class="hidden fixed inset-0 z-[60] modal-bg flex items-end justify-center safe-bottom">
+    <div class="w-full max-w-md rounded-t-2xl p-6 text-center" style="background: var(--card); border-top: 1px solid var(--border);">
+        <div class="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style="background: rgba(239,68,68,0.12);"><i class="fa-solid fa-trash text-xl" style="color: var(--danger);"></i></div>
+        <h3 id="del-title" class="text-lg font-bold mb-1">Delete this log?</h3>
+        <p id="del-msg" class="text-sm mb-5" style="color: var(--muted);">This action cannot be undone. All data and photos will be permanently removed.</p>
+        <div class="flex gap-3">
+            <button id="del-cancel" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--elevated); color: var(--fg);">Cancel</button>
+            <button id="del-confirm" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--danger); color: #fff;">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer -->
+<div id="img-viewer" class="hidden fixed inset-0 z-[70] flex flex-col items-center justify-center" style="background: rgba(0,0,0,0.95);">
+    <button id="viewer-close" class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center" style="background: rgba(255,255,255,0.1); color: #fff;"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <img id="viewer-img" class="viewer-in max-w-full max-h-[75dvh] object-contain rounded-lg px-2">
+    <div id="viewer-label" class="mt-3 text-center px-6"></div>
+</div>
+
+<script>
+/* ===== IndexedDB Setup ===== */
+const DB_NAME = 'MaintainLogDB';
+const DB_VER = 2;
+const ITEMS = 'items';
+const STORE = 'logs';
+let db = null;
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VER);
+        req.onupgradeneeded = (e) => {
+            const d = e.target.result;
+            if (!d.objectStoreNames.contains(STORE)) {
+                const s = d.createObjectStore(STORE, { keyPath: 'id' });
+                s.createIndex('status', 'status', { unique: false });
+                s.createIndex('apartment', 'apartment', { unique: false });
+                s.createIndex('updatedAt', 'updatedAt', { unique: false });
+            }
+            if (!d.objectStoreNames.contains(ITEMS)) {
+                d.createObjectStore(ITEMS, { keyPath: 'id' });
+            }
+        };
+        req.onsuccess = (e) => { db = e.target.result; db.onversionchange = () => db.close(); resolve(db); };
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+function dbGetAll() {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const s = tx.objectStore(STORE);
+        const req = s.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+function dbPut(log) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        const s = tx.objectStore(STORE);
+        const req = s.put(log);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+function dbDelete(id) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        const s = tx.objectStore(STORE);
+        const req = s.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+    });
+}
+
+function sAll(store) {
+    return new Promise((resolve, reject) => {
+        const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+        req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+}
+function sPut(store, obj) {
+    return new Promise((resolve, reject) => {
+        const req = db.transaction(store, 'readwrite').objectStore(store).put(obj);
+        req.onsuccess = () => resolve(); req.onerror = () => reject(req.error);
+    });
+}
+function sDel(store, id) {
+    return new Promise((resolve, reject) => {
+        const req = db.transaction(store, 'readwrite').objectStore(store).delete(id);
+        req.onsuccess = () => resolve(); req.onerror = () => reject(req.error);
+    });
+}
+
+/* ===== App State ===== */
+let logs = [];
+let currentFilter = 'all';
+let searchQuery = '';
+let pendingImages = []; // images being added in current form
+let items = [];
+let currentTab = 'logs';
+let deleteTargetId = null;
+let deleteAllMode = false; // NEW: tracks bulk delete
+let editMode = false;
+let deferredInstallPrompt = null;
+let swReg = null;
+
+/* ===== DOM References ===== */
+const $list = document.getElementById('log-list');
+const $empty = document.getElementById('empty-state');
+const $stats = document.getElementById('stats-bar');
+const $filters = document.getElementById('filters');
+const $delAllBtn = document.getElementById('del-all-btn');
+const $delAllLabel = document.getElementById('del-all-label');
+const $search = document.getElementById('search-input');
+const $fab = document.getElementById('fab');
+const $overlay = document.getElementById('modal-overlay');
+const $sheet = document.getElementById('sheet');
+const $form = document.getElementById('log-form');
+const $sheetTitle = document.getElementById('sheet-title');
+const $submitText = document.getElementById('submit-text');
+const $imgPreviews = document.getElementById('img-previews');
+const $fCamera = document.getElementById('f-camera');
+const $fGallery = document.getElementById('f-gallery');
+const $fDue = document.getElementById('f-due');
+const $delModal = document.getElementById('delete-modal');
+const $delTitle = document.getElementById('del-title');
+const $delMsg = document.getElementById('del-msg');
+const $viewer = document.getElementById('img-viewer');
+const $viewerImg = document.getElementById('viewer-img');
+const $viewerLabel = document.getElementById('viewer-label');
+const $installBtn = document.getElementById('install-btn');
+const $notifBtn = document.getElementById('notif-btn');
+
+/* ===== Utility ===== */
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function fmtDate(iso) {
+    const d = new Date(iso);
+    const mon = d.toLocaleString('en', { month: 'short' });
+    const day = d.getDate();
+    const h = d.getHours(); const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hh = h % 12 || 12;
+    const mm = String(m).padStart(2, '0');
+    return `${mon} ${day}, ${hh}:${mm} ${ampm}`;
+}
+
+function fmtShort(iso) {
+    const d = new Date(iso);
+    const mon = d.toLocaleString('en', { month: 'short' });
+    const day = d.getDate();
+    return `${mon} ${day}`;
+}
+
+/* NEW: Format due date with relative time */
+function fmtDue(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = d - now;
+    const mon = d.toLocaleString('en', { month: 'short' });
+    const day = d.getDate();
+    const h = d.getHours(); const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hh = h % 12 || 12;
+    const mm = String(m).padStart(2, '0');
+    let rel = '';
+    if (diff < 0) {
+        const absDiff = Math.abs(diff);
+        const days = Math.floor(absDiff / 86400000);
+        const hours = Math.floor(absDiff / 3600000);
+        const mins = Math.floor(absDiff / 60000);
+        if (days > 0) rel = `${days}d overdue`;
+        else if (hours > 0) rel = `${hours}h overdue`;
+        else rel = `${mins}m overdue`;
+    } else {
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor(diff / 3600000);
+        const mins = Math.floor(diff / 60000);
+        if (days > 0) rel = `in ${days}d`;
+        else if (hours > 0) rel = `in ${hours}h`;
+        else rel = `in ${mins}m`;
+    }
+    return `${mon} ${day}, ${hh}:${mm} ${ampm} · ${rel}`;
+}
+
+/* NEW: Determine due state */
+function dueState(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = d - now;
+    if (diff < 0) return 'overdue';
+    if (diff < 3600000) return 'soon'; // less than 1 hour
+    return 'normal';
+}
+
+function statusColor(s) {
+    return s === 'active' ? 'var(--active)' : s === 'suspended' ? 'var(--suspended)' : 'var(--completed)';
+}
+
+function statusIcon(s) {
+    return s === 'active' ? 'fa-bolt' : s === 'suspended' ? 'fa-pause' : 'fa-check-double';
+}
+
+function vibrate(ms = 10) {
+    if (navigator.vibrate) navigator.vibrate(ms);
+}
+
+/* ===== Compress Image ===== */
+function compressImage(file, maxW = 1280, quality = 0.72) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height;
+                if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+/* ===== Toast ===== */
+function toast(msg, type = 'info') {
+    const wrap = document.getElementById('toast-wrap');
+    const colors = { info: 'var(--accent)', success: 'var(--active)', error: 'var(--danger)' };
+    const icons = { info: 'fa-circle-info', success: 'fa-circle-check', error: 'fa-circle-exclamation' };
+    const el = document.createElement('div');
+    el.className = 'toast-in pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold';
+    el.style.cssText = `background: var(--card); border: 1px solid ${colors[type]}33; color: ${colors[type]}; box-shadow: 0 4px 20px rgba(0,0,0,0.4);`;
+    el.innerHTML = `<i class="fa-solid ${icons[type]}"></i> ${msg}`;
+    wrap.appendChild(el);
+    setTimeout(() => { el.classList.remove('toast-in'); el.classList.add('toast-out'); setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+/* ===== Render Stats ===== */
+function renderStats() {
+    const L = tabLogs();
+    const active = L.filter(l => l.status === 'active').length;
+    const suspended = L.filter(l => l.status === 'suspended').length;
+    const completed = L.filter(l => l.status === 'completed').length;
+    const now = new Date();
+    const dueSoon = L.filter(l => l.dueAt && l.status === 'active' && new Date(l.dueAt) > now && (new Date(l.dueAt) - now) < 3600000).length;
+    const overdue = L.filter(l => l.dueAt && l.status === 'active' && new Date(l.dueAt) < now).length;
+    $stats.innerHTML = `
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style="background: rgba(34,197,94,0.08);"><span class="w-2 h-2 rounded-full" style="background: var(--active);"></span><span style="color: #4ADE80;">${active}</span></div>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style="background: rgba(249,115,22,0.08);"><span class="w-2 h-2 rounded-full" style="background: var(--suspended);"></span><span style="color: #FB923C;">${suspended}</span></div>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style="background: rgba(100,116,139,0.08);"><span class="w-2 h-2 rounded-full" style="background: var(--completed);"></span><span style="color: #94A3B8;">${completed}</span></div>
+        ${overdue > 0 ? `<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style="background: rgba(239,68,68,0.10);"><i class="fa-solid fa-triangle-exclamation text-[9px]" style="color: var(--danger);"></i><span style="color: var(--danger);">${overdue}</span></div>` : ''}
+        ${dueSoon > 0 ? `<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style="background: rgba(245,158,11,0.10);"><i class="fa-solid fa-clock text-[9px]" style="color: var(--accent);"></i><span style="color: var(--accent);">${dueSoon}</span></div>` : ''}
+        <div class="ml-auto text-xs font-mono" style="color: var(--border);">${L.length} total</div>
+    `;
+}
+
+/* ===== Render Filters ===== */
+function renderFilters() {
+    const tabs = ['all', 'active', 'suspended', 'completed'];
+    $filters.innerHTML = tabs.map(t => `
+        <button class="filter-btn ${currentFilter === t ? 'on' : ''}" data-filter="${t}" style="color: ${currentFilter === t ? 'var(--accent)' : 'var(--muted)'};">
+            ${t.charAt(0).toUpperCase() + t.slice(1)}
+        </button>
+    `).join('');
+    $filters.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilter = btn.dataset.filter;
+            renderFilters();
+            renderList();
+            vibrate(5);
+        });
+    });
+
+    // NEW: Show/hide Delete All button based on filtered list
+    const filtered = getFilteredLogs();
+    if (filtered.length > 0) {
+        $delAllBtn.classList.remove('hidden');
+        const label = currentFilter === 'all'
+            ? `Delete All (${filtered.length})`
+            : `Delete All ${currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)} (${filtered.length})`;
+        $delAllLabel.textContent = label;
+    } else {
+        $delAllBtn.classList.add('hidden');
+    }
+}
+
+/* ===== Render Log List ===== */
+function tabType() { return currentTab === 'makeready' ? 'makeready' : 'log'; }
+function tabLogs() { return logs.filter(l => (l.type || 'log') === tabType()); }
+
+function getFilteredLogs() {
+    let filtered = tabLogs();
+    if (currentFilter !== 'all') filtered = filtered.filter(l => l.status === currentFilter);
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(l => l.apartment.toLowerCase().includes(q) || l.task.toLowerCase().includes(q) || (l.requestedBy || '').toLowerCase().includes(q));
+    }
+    // Sort by updatedAt descending
+    filtered.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    return filtered;
+}
+
+function renderList() {
+    const filtered = getFilteredLogs();
+    document.getElementById('empty-title').textContent = currentTab === 'makeready' ? 'No make ready logs yet' : 'No logs yet';
+    document.getElementById('empty-sub').textContent = currentTab === 'makeready' ? 'Tap the button below to add a make ready task' : 'Tap the button below to add your first maintenance task';
+    if (filtered.length === 0) {
+        $list.innerHTML = '';
+        $empty.classList.remove('hidden');
+        $empty.classList.add('flex');
+    } else {
+        $empty.classList.add('hidden');
+        $empty.classList.remove('flex');
+        $list.innerHTML = filtered.map((log, i) => renderCard(log, i)).join('');
+        bindCardEvents();
+    }
+    renderStats();
+    updateBellIndicator();
+}
+
+function renderCard(log, idx) {
+    const sc = statusColor(log.status);
+    const imgCount = (log.images || []).length;
+    const delay = Math.min(idx * 50, 300);
+    // NEW: Due date badge
+    const dueHtml = log.dueAt ? `
+        <div class="mt-2"><span class="due-badge ${dueState(log.dueAt)}"><i class="fa-solid ${dueState(log.dueAt) === 'overdue' ? 'fa-circle-exclamation' : 'fa-clock'} text-[8px]"></i> ${fmtDue(log.dueAt)}</span></div>
+    ` : '';
+    return `
+    <div class="log-card card-in rounded-xl p-4" style="background: var(--card); --status-color: ${sc}; animation-delay: ${delay}ms;" data-id="${log.id}">
+        <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono font-bold text-lg" style="color: ${sc};">${esc(log.apartment)}</span>
+                <span class="status-badge ${log.status}"><i class="fa-solid ${statusIcon(log.status)} text-[8px]"></i> ${log.status}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button class="cycle-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: var(--elevated); color: var(--muted);" title="Change status"><i class="fa-solid fa-arrows-rotate"></i></button>
+                <button class="edit-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: var(--elevated); color: var(--muted);" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                <button class="del-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: var(--elevated); color: var(--danger);" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        </div>
+        <p class="text-sm font-medium leading-snug mb-2" style="color: var(--fg);">${esc(log.task)}</p>
+        <div class="flex items-center gap-3 text-xs flex-wrap" style="color: var(--muted);">
+            ${log.requestedBy ? `<span><i class="fa-solid fa-user mr-1"></i>${esc(log.requestedBy)}</span>` : ''}
+            <span><i class="fa-regular fa-clock mr-1"></i>${fmtDate(log.updatedAt)}</span>
+            ${imgCount > 0 ? `<span><i class="fa-solid fa-image mr-1"></i>${imgCount}</span>` : ''}
+        </div>
+        ${dueHtml}
+        ${(log.images || []).length > 0 ? `
+        <div class="flex gap-2 mt-3 overflow-x-auto pb-1">
+            ${log.images.map(img => `
+                <div class="flex-shrink-0 view-img cursor-pointer" data-logid="${log.id}" data-imgid="${img.id}">
+                    <img src="${img.data}" class="w-16 h-16 rounded-lg object-cover" style="border: 1.5px solid var(--border);" loading="lazy">
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+    </div>`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+function bindCardEvents() {
+    // View image
+    $list.querySelectorAll('.view-img').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const logId = el.dataset.logid;
+            const imgId = el.dataset.imgid;
+            const log = logs.find(l => l.id === logId);
+            if (!log) return;
+            const img = log.images.find(i => i.id === imgId);
+            if (!img) return;
+            openViewer(img, log);
+        });
+    });
+    // Cycle status
+    $list.querySelectorAll('.cycle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = btn.closest('.log-card');
+            const log = logs.find(l => l.id === card.dataset.id);
+            if (!log) return;
+            const order = ['active', 'suspended', 'completed'];
+            const next = order[(order.indexOf(log.status) + 1) % 3];
+            log.status = next;
+            log.updatedAt = new Date().toISOString();
+            dbPut(log).then(() => { renderList(); toast(`Status changed to ${next}`, 'success'); vibrate(15); });
+        });
+    });
+    // Edit
+    $list.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = btn.closest('.log-card');
+            const log = logs.find(l => l.id === card.dataset.id);
+            if (!log) return;
+            openEditSheet(log);
+        });
+    });
+    // Delete
+    $list.querySelectorAll('.del-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = btn.closest('.log-card');
+            deleteTargetId = card.dataset.id;
+            deleteAllMode = false;
+            $delTitle.textContent = 'Delete this log?';
+            $delMsg.textContent = 'This action cannot be undone. All data and photos will be permanently removed.';
+            $delModal.classList.remove('hidden');
+            vibrate(20);
+        });
+    });
+}
+
+/* ===== Image Viewer ===== */
+function openViewer(img, log) {
+    $viewerImg.src = img.data;
+    $viewerLabel.innerHTML = `
+        <div class="img-label mb-1" style="font-size: 11px; max-width: 90vw;">${esc(img.label)}</div>
+        <div class="text-xs" style="color: var(--muted);">Saved to: Device Storage | ${esc(log.apartment)} &middot; ${fmtShort(img.takenAt)}</div>
+    `;
+    $viewer.classList.remove('hidden');
+    vibrate(5);
+}
+
+document.getElementById('viewer-close').addEventListener('click', () => { $viewer.classList.add('hidden'); });
+$viewer.addEventListener('click', (e) => { if (e.target === $viewer) $viewer.classList.add('hidden'); });
+
+/* ===== Sheet (Add/Edit) ===== */
+function setFormType(type) {
+    document.getElementById('f-type').value = type;
+    document.getElementById('who-wrap').classList.toggle('hidden', type === 'makeready');
+}
+
+function openAddSheet() {
+    editMode = false;
+    const type = tabType();
+    $sheetTitle.textContent = type === 'makeready' ? 'New Make Ready' : 'New Log';
+    $submitText.textContent = type === 'makeready' ? 'Save Make Ready' : 'Save Log';
+    $form.reset();
+    document.getElementById('f-id').value = '';
+    document.getElementById('f-status').value = 'active';
+    $fDue.value = '';
+    setFormType(type);
+    pendingImages = [];
+    renderImagePreviews();
+    openSheet();
+}
+
+function openEditSheet(log) {
+    editMode = true;
+    const type = log.type || 'log';
+    setFormType(type);
+    $sheetTitle.textContent = type === 'makeready' ? 'Edit Make Ready' : 'Edit Log';
+    $submitText.textContent = type === 'makeready' ? 'Update Make Ready' : 'Update Log';
+    document.getElementById('f-id').value = log.id;
+    document.getElementById('f-apt').value = log.apartment;
+    document.getElementById('f-task').value = log.task;
+    document.getElementById('f-who').value = log.requestedBy || '';
+    document.getElementById('f-status').value = log.status;
+    // NEW: populate due date (convert ISO -> datetime-local)
+    if (log.dueAt) {
+        const d = new Date(log.dueAt);
+        const offset = d.getTimezoneOffset() * 60000;
+        $fDue.value = new Date(d - offset).toISOString().slice(0, 16);
+    } else {
+        $fDue.value = '';
+    }
+    pendingImages = [...(log.images || [])];
+    renderImagePreviews();
+    openSheet();
+}
+
+function openSheet() {
+    $overlay.classList.remove('hidden');
+    requestAnimationFrame(() => { $sheet.classList.add('open'); });
+    vibrate(5);
+}
+
+function closeSheet() {
+    $sheet.classList.remove('open');
+    setTimeout(() => { $overlay.classList.add('hidden'); }, 350);
+}
+
+$fab.addEventListener('click', openAddSheet);
+document.getElementById('sheet-close').addEventListener('click', closeSheet);
+$overlay.addEventListener('click', (e) => { if (e.target === $overlay) closeSheet(); });
+
+/* ===== Image Handling in Form ===== */
+async function handleImageFiles(files) {
+    const apt = document.getElementById('f-apt').value.trim() || 'UNKNOWN';
+    const task = document.getElementById('f-task').value.trim().substring(0, 20) || 'Task';
+    for (const file of files) {
+        const data = await compressImage(file);
+        const now = new Date().toISOString();
+        const label = `Apt ${apt} · ${task} · ${fmtShort(now)}`;
+        pendingImages.push({ id: uid(), data, label, takenAt: now });
+    }
+    renderImagePreviews();
+    vibrate(10);
+}
+
+function renderImagePreviews() {
+    if (pendingImages.length === 0) {
+        $imgPreviews.innerHTML = '';
+        return;
+    }
+    $imgPreviews.innerHTML = pendingImages.map((img, i) => `
+        <div class="relative flex-shrink-0">
+            <img src="${img.data}" class="w-20 h-20 rounded-lg object-cover" style="border: 1.5px solid var(--border);">
+            <button type="button" class="rm-img absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px]" style="background: var(--danger); color: #fff;" data-idx="${i}"><i class="fa-solid fa-xmark"></i></button>
+            <div class="img-label mt-1 text-center" style="max-width: 80px; font-size: 8px;">${esc(img.label)}</div>
+        </div>
+    `).join('');
+    $imgPreviews.querySelectorAll('.rm-img').forEach(btn => {
+        btn.addEventListener('click', () => {
+            pendingImages.splice(parseInt(btn.dataset.idx), 1);
+            renderImagePreviews();
+            vibrate(5);
+        });
+    });
+}
+
+$fCamera.addEventListener('change', (e) => { if (e.target.files.length) handleImageFiles(Array.from(e.target.files)); e.target.value = ''; });
+$fGallery.addEventListener('change', (e) => { if (e.target.files.length) handleImageFiles(Array.from(e.target.files)); e.target.value = ''; });
+
+/* ===== Form Submit ===== */
+$form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('f-id').value || uid();
+    const apt = document.getElementById('f-apt').value.trim();
+    const task = document.getElementById('f-task').value.trim();
+    const type = document.getElementById('f-type').value || 'log';
+    const who = type === 'makeready' ? '' : document.getElementById('f-who').value.trim();
+    const status = document.getElementById('f-status').value;
+    const now = new Date().toISOString();
+
+    // NEW: Convert datetime-local to ISO
+    let dueAt = null;
+    if ($fDue.value) {
+        const d = new Date($fDue.value);
+        if (!isNaN(d.getTime())) dueAt = d.toISOString();
+    }
+
+    // Update image labels with final apt/task
+    const images = pendingImages.map(img => ({
+        ...img,
+        label: `Apt ${apt} · ${task.substring(0, 20)} · ${fmtShort(img.takenAt)}`
+    }));
+
+    const existing = logs.find(l => l.id === id);
+    const log = {
+        id,
+        apartment: apt,
+        task,
+        type,
+        requestedBy: who,
+        status,
+        dueAt,
+        notified: existing ? (existing.notified || []) : [],
+        createdAt: existing ? existing.createdAt : now,
+        updatedAt: now,
+        images
+    };
+
+    try {
+        await dbPut(log);
+        await loadLogs();
+        renderList();
+        closeSheet();
+        toast(editMode ? 'Updated' : 'Saved to device', 'success');
+        vibrate(20);
+        checkDue();
+    } catch (err) {
+        toast('Error saving log', 'error');
+    }
+});
+
+/* ===== Delete (single + bulk) ===== */
+document.getElementById('del-cancel').addEventListener('click', () => {
+    $delModal.classList.add('hidden');
+    deleteTargetId = null;
+    deleteAllMode = false;
+});
+document.getElementById('del-confirm').addEventListener('click', async () => {
+    try {
+        if (deleteAllMode) {
+            // NEW: Bulk delete all logs in the current filter/search view
+            const toDelete = getFilteredLogs();
+            for (const log of toDelete) {
+                await dbDelete(log.id);
+            }
+            const n = toDelete.length;
+            deleteAllMode = false;
+            await loadLogs();
+            renderFilters();
+            renderList();
+            toast(`${n} log${n !== 1 ? 's' : ''} deleted`, 'info');
+            vibrate(30);
+        } else if (deleteTargetId) {
+            await dbDelete(deleteTargetId);
+            await loadLogs();
+            renderList();
+            toast('Log deleted', 'info');
+            vibrate(30);
+        }
+    } catch (err) {
+        toast('Error deleting log(s)', 'error');
+    }
+    $delModal.classList.add('hidden');
+    deleteTargetId = null;
+    deleteAllMode = false;
+});
+
+/* NEW: Delete All button click */
+$delAllBtn.addEventListener('click', () => {
+    const filtered = getFilteredLogs();
+    if (filtered.length === 0) return;
+    deleteAllMode = true;
+    deleteTargetId = null;
+    const label = currentFilter === 'all' ? 'ALL logs' : `all ${currentFilter} logs`;
+    $delTitle.textContent = `Delete ${label}?`;
+    $delMsg.textContent = `This will permanently delete ${filtered.length} log${filtered.length !== 1 ? 's' : ''} and all associated photos. This cannot be undone.`;
+    $delModal.classList.remove('hidden');
+    vibrate(20);
+});
+
+/* ===== Search ===== */
+let searchTimer = null;
+$search.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        searchQuery = $search.value.trim();
+        renderList();
+        renderFilters();
+    }, 200);
+});
+
+/* ===== Load Logs ===== */
+async function loadLogs() {
+    try {
+        logs = await dbGetAll();
+    } catch (err) {
+        logs = [];
+    }
+}
+
+/* ===== Items Needed (header section) ===== */
+async function loadItems() {
+    try { items = await sAll(ITEMS); } catch (e) { items = []; }
+}
+
+function renderItems() {
+    const $wrap = document.getElementById('items-wrap');
+    const sorted = [...items].sort((a, b) => (a.checked - b.checked) || (new Date(b.createdAt) - new Date(a.createdAt)));
+    document.getElementById('items-empty').classList.toggle('hidden', sorted.length > 0);
+    const done = items.filter(i => i.checked).length;
+    document.getElementById('i-count').textContent = items.length ? `${done}/${items.length} got` : '';
+    document.getElementById('i-clear').classList.toggle('hidden', done === 0);
+    $wrap.innerHTML = sorted.map(it => `
+        <div class="item-row ${it.checked ? 'done' : ''}" data-id="${it.id}">
+            <input type="checkbox" ${it.checked ? 'checked' : ''}>
+            <span class="item-text">${esc(it.text)}</span>
+            ${it.apt ? `<span class="apt-tag">${esc(it.apt)}</span>` : ''}
+            <button type="button" class="rm-item" data-id="${it.id}"><i class="fa-solid fa-xmark"></i></button>
+        </div>`).join('');
+}
+
+async function addNeededItem() {
+    const $t = document.getElementById('i-text'), $a = document.getElementById('i-apt');
+    const text = $t.value.trim();
+    if (!text) return;
+    await sPut(ITEMS, { id: uid(), text, apt: $a.value.trim(), checked: false, createdAt: new Date().toISOString() });
+    $t.value = ''; $a.value = '';
+    await loadItems(); renderItems(); vibrate(5); $t.focus();
+}
+
+document.getElementById('i-add').addEventListener('click', addNeededItem);
+document.getElementById('i-text').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addNeededItem(); } });
+document.getElementById('items-wrap').addEventListener('change', async (e) => {
+    if (e.target.type !== 'checkbox') return;
+    const it = items.find(i => i.id === e.target.closest('.item-row').dataset.id);
+    if (!it) return;
+    it.checked = e.target.checked;
+    await sPut(ITEMS, it); renderItems(); vibrate(5);
+});
+document.getElementById('items-wrap').addEventListener('click', async (e) => {
+    const x = e.target.closest('.rm-item');
+    if (x) { await sDel(ITEMS, x.dataset.id); await loadItems(); renderItems(); vibrate(8); return; }
+    if (e.target.classList.contains('item-text')) { e.target.closest('.item-row').querySelector('input').click(); }
+});
+document.getElementById('i-clear').addEventListener('click', async () => {
+    for (const it of items.filter(i => i.checked)) await sDel(ITEMS, it.id);
+    await loadItems(); renderItems(); vibrate(10);
+});
+
+/* One-time move: items that were stored inside logs -> Items Needed */
+async function migrateItems() {
+    const all = await dbGetAll();
+    for (const log of all) {
+        if (log.items && log.items.length) {
+            for (const it of log.items) {
+                await sPut(ITEMS, { id: it.id, text: it.text, apt: log.apartment, checked: !!it.checked, createdAt: log.createdAt || new Date().toISOString() });
+            }
+            log.items = [];
+            await dbPut(log);
+        }
+    }
+}
+
+/* ===== Tabs ===== */
+function setTab(t) {
+    currentTab = t;
+    currentFilter = 'all';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    document.getElementById('logs-view').classList.toggle('hidden', t === 'items');
+    document.getElementById('items-view').classList.toggle('hidden', t !== 'items');
+    $fab.classList.toggle('hidden', t === 'items');
+    if (t === 'items') { renderItems(); } else { renderFilters(); renderList(); }
+    vibrate(5);
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+/* ===== Notifications (service worker driven) ===== */
+function notificationsSupported() { return 'Notification' in window; }
+function getNotifPermission() { return notificationsSupported() ? Notification.permission : 'denied'; }
+
+function updateBellIndicator() {
+    const perm = getNotifPermission();
+    $notifBtn.classList.toggle('on', perm === 'granted');
+    const urgent = logs.filter(l => l.dueAt && l.status === 'active' && dueState(l.dueAt) !== 'normal').length;
+    $notifBtn.classList.toggle('has-due', urgent > 0 && perm === 'granted');
+    try {
+        if ('setAppBadge' in navigator) {
+            if (urgent > 0) navigator.setAppBadge(urgent).catch(() => {});
+            else navigator.clearAppBadge().catch(() => {});
+        }
+    } catch (e) {}
+}
+
+function swPost(msg) {
+    const sw = (navigator.serviceWorker && navigator.serviceWorker.controller) || (swReg && swReg.active);
+    if (sw) sw.postMessage(msg);
+}
+function checkDue() { if (getNotifPermission() === 'granted') swPost({ type: 'check' }); }
+
+async function registerPeriodic() {
+    try {
+        if (swReg && swReg.periodicSync && getNotifPermission() === 'granted') {
+            await swReg.periodicSync.register('maintainlog-due', { minInterval: 15 * 60 * 1000 });
+        }
+    } catch (e) {}
+}
+
+$notifBtn.addEventListener('click', async () => {
+    if (!notificationsSupported()) { toast('Notifications not supported on this device', 'error'); return; }
+    if (Notification.permission === 'denied') { toast('Notifications blocked. Enable in browser/site settings.', 'error'); return; }
+    if (Notification.permission === 'default') {
+        const r = await Notification.requestPermission();
+        updateBellIndicator();
+        if (r !== 'granted') { toast('Notifications denied', 'error'); return; }
+        registerPeriodic();
+    }
+    swPost({ type: 'test' });
+    checkDue();
+    toast('Notifications ON', 'success');
+    vibrate(10);
+});
+
+async function setupSW() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+        swReg = await navigator.serviceWorker.register('sw.js');
+        await navigator.serviceWorker.ready;
+        registerPeriodic();
+        navigator.serviceWorker.addEventListener('message', async (e) => {
+            const d = e.data || {};
+            if (d.type === 'refresh' || d.type === 'toast') {
+                await loadLogs();
+                if (currentTab !== 'items') { renderFilters(); renderList(); } else { updateBellIndicator(); }
+                if (d.type === 'toast') toast(d.body, 'info');
+            }
+        });
+    } catch (e) { console.warn('SW failed', e); }
+}
+
+/* ===== PWA Install ===== */
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    $installBtn.classList.remove('hidden');
+});
+
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+if (isIOS && !isStandalone) $installBtn.classList.remove('hidden');
+window.addEventListener('appinstalled', () => { $installBtn.classList.add('hidden'); });
+
+$installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) { if (isIOS) toast('Tap Share, then Add to Home Screen', 'info'); return; }
+    deferredInstallPrompt.prompt();
+    const result = await deferredInstallPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+        $installBtn.classList.add('hidden');
+        toast('App installed to home screen', 'success');
+    }
+    deferredInstallPrompt = null;
+});
+
+/* ===== Init ===== */
+async function init() {
+    await openDB();
+    await migrateItems();
+    await loadLogs();
+    await loadItems();
+    const t = new URLSearchParams(location.search).get('tab');
+    setTab(['logs', 'makeready', 'items'].includes(t) ? t : 'logs');
+    if (logs.length > 0) toast(`${logs.length} log${logs.length > 1 ? 's' : ''} loaded from device storage`, 'info');
+    updateBellIndicator();
+    await setupSW();
+    checkDue();
+    setInterval(() => { checkDue(); updateBellIndicator(); }, 30000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            Promise.all([loadLogs(), loadItems()]).then(() => {
+                if (currentTab === 'items') renderItems(); else { renderFilters(); renderList(); }
+                checkDue();
+            });
+        }
+    });
+}
+
+init();
+</script>
+</body>
+</html>
