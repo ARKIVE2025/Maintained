@@ -1,5 +1,5 @@
 /* MaintainLog service worker: offline cache + due-date notifications */
-const CACHE = 'maintainlog-v2';
+const CACHE = 'maintainlog-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const DB_NAME = 'MaintainLogDB';
 // [stage, offset ms from due time]
