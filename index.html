@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" type="image/png" href="icon-192.png">
     <title>MaintainLog</title>
+    <script>try{if(localStorage.getItem('ml_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -124,7 +125,7 @@
         .card-items .item-row { padding: 6px 8px; }
 
         .tab-btn {
-            flex: 1; padding: 9px 6px; border-radius: 10px; font-size: 12px; font-weight: 600;
+            flex: 1 0 auto; padding: 9px 11px; border-radius: 10px; font-size: 12px; font-weight: 600;
             background: var(--elevated); color: var(--muted); border: 1px solid var(--border);
             display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;
             white-space: nowrap;
@@ -168,6 +169,72 @@
             background: var(--danger); border: 1.5px solid var(--bg);
             animation: fabPulse 2s ease-in-out infinite;
         }
+        /* ===== Light theme ===== */
+        [data-theme="light"] {
+            --bg: #F5F4F0; --card: #FFFFFF; --elevated: #EFEDE7;
+            --fg: #1C1917; --muted: #78716C; --border: #DEDBD3;
+            --accent: #D97706; --accent-dim: rgba(217,119,6,0.12);
+            --active: #16A34A; --suspended: #EA580C; --completed: #64748B;
+            --danger: #DC2626;
+        }
+        [data-theme="light"] body { background-image: radial-gradient(ellipse at 50% 0%, rgba(217,119,6,0.06) 0%, transparent 60%); }
+        [data-theme="light"] .status-badge.active { color: #15803D; }
+        [data-theme="light"] .status-badge.suspended { color: #C2410C; }
+        [data-theme="light"] .status-badge.completed { color: #475569; }
+        [data-theme="light"] .due-badge.soon { color: #B45309; }
+        [data-theme="light"] .due-badge.overdue { color: #B91C1C; }
+        [data-theme="light"] .due-badge.normal { color: #0369A1; }
+        [data-theme="light"] [style*="#4ADE80"] { color: #15803D !important; }
+        [data-theme="light"] [style*="#FB923C"] { color: #C2410C !important; }
+        [data-theme="light"] [style*="#94A3B8"] { color: #475569 !important; }
+        [data-theme="light"] .log-card, [data-theme="light"] .cal-item { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+        /* ===== Checkboxes (visible on all browsers) ===== */
+        input[type="checkbox"] {
+            -webkit-appearance: checkbox !important; appearance: auto !important;
+            width: 18px !important; height: 18px !important; padding: 0 !important; margin: 0 !important;
+            border: none !important; background: transparent !important; accent-color: var(--accent);
+            flex-shrink: 0; cursor: pointer;
+        }
+        .chk-pill {
+            flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 9px 6px; border-radius: 10px; background: var(--elevated);
+            border: 1.5px solid var(--border); font-size: 11px; font-weight: 600;
+            line-height: 1.15; text-align: center; cursor: pointer; color: var(--fg);
+        }
+        .chk-pill:has(input:checked) { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.10); }
+
+        .task-text { white-space: pre-line; word-break: break-word; }
+        .merge-btn {
+            margin-top: 10px; width: 100%; padding: 8px 10px; border-radius: 8px;
+            font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+            background: var(--accent-dim); color: var(--accent); border: 1px dashed rgba(245,158,11,0.45);
+        }
+        .item-row input[type="text"] { padding: 8px 10px !important; font-size: 14px !important; }
+        .item-row .edit-item, .item-row .save-item, .item-row .cancel-item {
+            width: 26px; height: 26px; border-radius: 6px; background: transparent;
+            font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .item-row .edit-item { color: var(--muted); }
+        .item-row .save-item { color: var(--active); }
+        .item-row .cancel-item { color: var(--muted); }
+
+        /* ===== Calendar ===== */
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-day {
+            min-height: 50px; border-radius: 10px; background: var(--card); border: 1px solid var(--border);
+            color: var(--fg); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+        }
+        .cal-day.blank { visibility: hidden; }
+        .cal-day.today { border-color: var(--accent); }
+        .cal-day.sel { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+        .cal-dots { display: flex; gap: 3px; height: 6px; align-items: center; }
+        .cal-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .cal-item { background: var(--card); border-left: 3px solid var(--c, var(--accent)); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+        .cal-type { font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
+        #tabs { overflow-x: auto; scrollbar-width: none; }
+        #tabs::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -179,7 +246,7 @@
 <header class="safe-top sticky top-0 z-50 px-5 pt-3 pb-2" style="background: linear-gradient(to bottom, var(--bg) 60%, transparent);">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold tracking-tight" style="color: var(--accent);">
+            <h1 class="text-xl font-bold tracking-tight" style="color: var(--accent);">
                 <i class="fa-solid fa-wrench mr-1 text-lg"></i> MaintainLog
             </h1>
             <p class="text-xs mt-0.5" style="color: var(--muted);">Track. Fix. Done.</p>
@@ -188,6 +255,7 @@
             <button id="bk-btn" class="bell-btn" title="Backup"><i class="fa-solid fa-file-export"></i></button>
             <button id="rs-btn" class="bell-btn" title="Restore"><i class="fa-solid fa-file-import"></i></button>
             <input type="file" id="rs-file" accept=".json,application/json" class="hidden">
+            <button id="theme-btn" class="bell-btn" title="Dark / Light"><i class="fa-solid fa-sun"></i></button>
             <button id="notif-btn" class="bell-btn" title="Notifications">
                 <i class="fa-solid fa-bell"></i>
             </button>
@@ -203,6 +271,7 @@
     <button class="tab-btn on" data-tab="logs"><i class="fa-solid fa-clipboard-list"></i> Logs</button>
     <button class="tab-btn" data-tab="makeready"><i class="fa-solid fa-broom"></i> Make Ready</button>
     <button class="tab-btn" data-tab="items"><i class="fa-solid fa-cart-shopping"></i> Items Needed</button>
+    <button class="tab-btn" data-tab="calendar"><i class="fa-solid fa-calendar-days"></i> Calendar</button>
 </nav>
 
 <div id="logs-view">
@@ -255,6 +324,24 @@
     </div>
 </section>
 
+<!-- Calendar -->
+<section id="cal-view" class="hidden px-5 py-3 pb-28">
+    <div class="flex items-center justify-between mb-3">
+        <button type="button" id="cal-prev" class="bell-btn"><i class="fa-solid fa-chevron-left"></i></button>
+        <div id="cal-title" class="text-base font-bold"></div>
+        <div class="flex gap-2">
+            <button type="button" id="cal-today" class="bell-btn" title="Today"><i class="fa-solid fa-calendar-day"></i></button>
+            <button type="button" id="cal-next" class="bell-btn"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+    </div>
+    <div class="cal-grid mb-1 text-[10px] font-mono text-center" style="color: var(--muted);">
+        <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+    </div>
+    <div id="cal-grid" class="cal-grid"></div>
+    <h3 id="cal-day-title" class="text-sm font-bold mt-4 mb-2"></h3>
+    <div id="cal-day-list" class="flex flex-col gap-2"></div>
+</section>
+
 <!-- FAB -->
 <button id="fab" class="fab-pulse fixed z-40 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold safe-bottom" style="background: var(--accent); color: #0C0C0C; right: 20px; bottom: 24px; box-shadow: 0 4px 24px rgba(245,158,11,0.3);">
     <i class="fa-solid fa-plus"></i>
@@ -289,6 +376,14 @@
                     <option value="suspended">Suspended</option>
                     <option value="completed">Completed</option>
                 </select>
+            </div>
+            <div id="checks-wrap" class="hidden">
+                <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">CHECKLIST</label>
+                <div class="flex gap-2">
+                    <label class="chk-pill"><input type="checkbox" id="f-paint"><span>Paint</span></label>
+                    <label class="chk-pill"><input type="checkbox" id="f-clean"><span>Clean</span></label>
+                    <label class="chk-pill"><input type="checkbox" id="f-appliance"><span>Appliance Check</span></label>
+                </div>
             </div>
             <!-- NEW: Due Date / Time -->
             <div>
@@ -329,6 +424,19 @@
         <div class="flex gap-3">
             <button id="del-cancel" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--elevated); color: var(--fg);">Cancel</button>
             <button id="del-confirm" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--danger); color: #fff;">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Merge Modal -->
+<div id="merge-modal" class="hidden fixed inset-0 z-[60] modal-bg flex items-end justify-center safe-bottom">
+    <div class="w-full max-w-md rounded-t-2xl p-5 max-h-[85dvh] overflow-y-auto" style="background: var(--card); border-top: 1px solid var(--border);">
+        <h3 id="merge-title" class="text-lg font-bold mb-1">Merge logs</h3>
+        <p class="text-sm mb-3" style="color: var(--muted);">Select the logs to combine into one. Tasks, photos and requesters are kept.</p>
+        <div id="merge-list" class="flex flex-col gap-2 mb-4"></div>
+        <div class="flex gap-3">
+            <button type="button" id="merge-cancel" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--elevated); color: var(--fg);">Cancel</button>
+            <button type="button" id="merge-confirm" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--accent); color: #0C0C0C;">Merge</button>
         </div>
     </div>
 </div>
@@ -615,6 +723,8 @@ function renderFilters() {
 }
 
 /* ===== Render Log List ===== */
+let dupMap = {};
+function aptKey(l) { return (l.apartment || '').trim().toLowerCase(); }
 function tabType() { return currentTab === 'makeready' ? 'makeready' : 'log'; }
 function tabLogs() { return logs.filter(l => (l.type || 'log') === tabType()); }
 
@@ -626,7 +736,7 @@ function getFilteredLogs() {
         filtered = filtered.filter(l => l.apartment.toLowerCase().includes(q) || l.task.toLowerCase().includes(q) || (l.requestedBy || '').toLowerCase().includes(q));
     }
     // Sort by updatedAt descending
-    filtered.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    filtered.sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || (new Date(b.updatedAt) - new Date(a.updatedAt)));
     return filtered;
 }
 
@@ -641,41 +751,51 @@ function renderList() {
     } else {
         $empty.classList.add('hidden');
         $empty.classList.remove('flex');
+        dupMap = {};
+        tabLogs().forEach(l => { if (l.status === 'completed') return; const k = aptKey(l); dupMap[k] = (dupMap[k] || 0) + 1; });
         $list.innerHTML = filtered.map((log, i) => renderCard(log, i)).join('');
         bindCardEvents();
     }
     renderStats();
     updateBellIndicator();
+    if (currentTab === 'calendar') renderCalendar();
 }
 
 function renderCard(log, idx) {
     const sc = statusColor(log.status);
     const imgCount = (log.images || []).length;
     const delay = Math.min(idx * 50, 300);
+    const ck = log.checks || {};
+    const checksHtml = (log.type === 'makeready') ? `<div class="flex gap-2 mb-2">` + [['paint', 'Paint'], ['clean', 'Clean'], ['appliance', 'Appliance Check']].map(([k, n]) => `<label class="chk-pill"><input type="checkbox" class="mr-chk" data-k="${k}" ${ck[k] ? 'checked' : ''}><span>${n}</span></label>`).join('') + `</div>` : '';
+    const dupN = log.status !== 'completed' ? (dupMap[aptKey(log)] || 0) : 0;
+    const dupHtml = dupN >= 2 ? `<button type="button" class="merge-btn"><i class="fa-solid fa-code-merge"></i> Merge duplicates (${dupN})</button>` : '';
     // NEW: Due date badge
     const dueHtml = log.dueAt ? `
         <div class="mt-2"><span class="due-badge ${dueState(log.dueAt)}"><i class="fa-solid ${dueState(log.dueAt) === 'overdue' ? 'fa-circle-exclamation' : 'fa-clock'} text-[8px]"></i> ${fmtDue(log.dueAt)}</span></div>
     ` : '';
     return `
-    <div class="log-card card-in rounded-xl p-4" style="background: var(--card); --status-color: ${sc}; animation-delay: ${delay}ms;" data-id="${log.id}">
+    <div class="log-card card-in rounded-xl p-4" style="background: var(--card); --status-color: ${sc}; animation-delay: ${delay}ms;${log.pinned ? ' box-shadow: 0 0 0 1px rgba(245,158,11,0.45);' : ''}" data-id="${log.id}">
         <div class="flex items-start justify-between gap-2 mb-2">
             <div class="flex items-center gap-2.5">
                 <span class="font-mono font-bold text-lg" style="color: ${sc};">${esc(log.apartment)}</span>
                 <span class="status-badge ${log.status}"><i class="fa-solid ${statusIcon(log.status)} text-[8px]"></i> ${log.status}</span>
             </div>
             <div class="flex items-center gap-1.5">
+                <button class="pin-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: ${log.pinned ? 'var(--accent-dim)' : 'var(--elevated)'}; color: ${log.pinned ? 'var(--accent)' : 'var(--muted)'};" title="Pin to top"><i class="fa-solid fa-thumbtack"></i></button>
                 <button class="cycle-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: var(--elevated); color: var(--muted);" title="Change status"><i class="fa-solid fa-arrows-rotate"></i></button>
                 <button class="edit-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: var(--elevated); color: var(--muted);" title="Edit"><i class="fa-solid fa-pen"></i></button>
                 <button class="del-btn w-7 h-7 rounded-md flex items-center justify-center text-xs" style="background: var(--elevated); color: var(--danger);" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
             </div>
         </div>
-        <p class="text-sm font-medium leading-snug mb-2" style="color: var(--fg);">${esc(log.task)}</p>
+        <p class="task-text text-sm font-medium leading-snug mb-2" style="color: var(--fg);">${esc(log.task)}</p>
+        ${checksHtml}
         <div class="flex items-center gap-3 text-xs flex-wrap" style="color: var(--muted);">
             ${log.requestedBy ? `<span><i class="fa-solid fa-user mr-1"></i>${esc(log.requestedBy)}</span>` : ''}
             <span><i class="fa-regular fa-clock mr-1"></i>${fmtDate(log.updatedAt)}</span>
             ${imgCount > 0 ? `<span><i class="fa-solid fa-image mr-1"></i>${imgCount}</span>` : ''}
         </div>
         ${dueHtml}
+        ${dupHtml}
         ${(log.images || []).length > 0 ? `
         <div class="flex gap-2 mt-3 overflow-x-auto pb-1">
             ${log.images.map(img => `
@@ -702,6 +822,34 @@ function bindCardEvents() {
             const img = log.images.find(i => i.id === imgId);
             if (!img) return;
             openViewer(img, log);
+        });
+    });
+    // Pin
+    $list.querySelectorAll('.pin-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const log = logs.find(l => l.id === btn.closest('.log-card').dataset.id);
+            if (!log) return;
+            log.pinned = !log.pinned;
+            dbPut(log).then(() => { renderList(); toast(log.pinned ? 'Pinned to top' : 'Unpinned', 'success'); vibrate(10); });
+        });
+    });
+    // Make Ready checklist
+    $list.querySelectorAll('.mr-chk').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const log = logs.find(l => l.id === cb.closest('.log-card').dataset.id);
+            if (!log) return;
+            log.checks = Object.assign({ paint: false, clean: false, appliance: false }, log.checks || {});
+            log.checks[cb.dataset.k] = cb.checked;
+            dbPut(log); vibrate(8);
+        });
+    });
+    // Merge
+    $list.querySelectorAll('.merge-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const log = logs.find(l => l.id === btn.closest('.log-card').dataset.id);
+            if (log) openMerge(log);
         });
     });
     // Cycle status
@@ -761,6 +909,7 @@ $viewer.addEventListener('click', (e) => { if (e.target === $viewer) $viewer.cla
 function setFormType(type) {
     document.getElementById('f-type').value = type;
     document.getElementById('who-wrap').classList.toggle('hidden', type === 'makeready');
+    document.getElementById('checks-wrap').classList.toggle('hidden', type !== 'makeready');
 }
 
 function openAddSheet() {
@@ -772,6 +921,7 @@ function openAddSheet() {
     document.getElementById('f-id').value = '';
     document.getElementById('f-status').value = 'active';
     $fDue.value = '';
+    ['paint', 'clean', 'appliance'].forEach(k => { document.getElementById('f-' + k).checked = false; });
     setFormType(type);
     pendingImages = [];
     renderImagePreviews();
@@ -789,6 +939,8 @@ function openEditSheet(log) {
     document.getElementById('f-task').value = log.task;
     document.getElementById('f-who').value = log.requestedBy || '';
     document.getElementById('f-status').value = log.status;
+    const lc = log.checks || {};
+    ['paint', 'clean', 'appliance'].forEach(k => { document.getElementById('f-' + k).checked = !!lc[k]; });
     // NEW: populate due date (convert ISO -> datetime-local)
     if (log.dueAt) {
         const d = new Date(log.dueAt);
@@ -888,6 +1040,8 @@ $form.addEventListener('submit', async (e) => {
         requestedBy: who,
         status,
         dueAt,
+        pinned: existing ? !!existing.pinned : false,
+        checks: type === 'makeready' ? { paint: document.getElementById('f-paint').checked, clean: document.getElementById('f-clean').checked, appliance: document.getElementById('f-appliance').checked } : undefined,
         notified: existing ? (existing.notified || []) : [],
         createdAt: existing ? existing.createdAt : now,
         updatedAt: now,
@@ -981,6 +1135,8 @@ async function loadItems() {
     try { items = await sAll(ITEMS); } catch (e) { items = []; }
 }
 
+let editingItemId = null;
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
 function renderItems() {
     const $wrap = document.getElementById('items-wrap');
     const sorted = [...items].sort((a, b) => (a.checked - b.checked) || (new Date(b.createdAt) - new Date(a.createdAt)));
@@ -988,11 +1144,18 @@ function renderItems() {
     const done = items.filter(i => i.checked).length;
     document.getElementById('i-count').textContent = items.length ? `${done}/${items.length} got` : '';
     document.getElementById('i-clear').classList.toggle('hidden', done === 0);
-    $wrap.innerHTML = sorted.map(it => `
+    $wrap.innerHTML = sorted.map(it => it.id === editingItemId ? `
+        <div class="item-row" data-id="${it.id}">
+            <input type="text" class="ei-text" value="${escAttr(it.text)}" placeholder="Item">
+            <input type="text" class="ei-apt" value="${escAttr(it.apt || '')}" placeholder="Apt" style="max-width: 76px;">
+            <button type="button" class="save-item" title="Save"><i class="fa-solid fa-check"></i></button>
+            <button type="button" class="cancel-item" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
+        </div>` : `
         <div class="item-row ${it.checked ? 'done' : ''}" data-id="${it.id}">
             <input type="checkbox" ${it.checked ? 'checked' : ''}>
             <span class="item-text">${esc(it.text)}</span>
             ${it.apt ? `<span class="apt-tag">${esc(it.apt)}</span>` : ''}
+            <button type="button" class="edit-item" data-id="${it.id}" title="Edit"><i class="fa-solid fa-pen"></i></button>
             <button type="button" class="rm-item" data-id="${it.id}"><i class="fa-solid fa-xmark"></i></button>
         </div>`).join('');
 }
@@ -1015,7 +1178,26 @@ document.getElementById('items-wrap').addEventListener('change', async (e) => {
     it.checked = e.target.checked;
     await sPut(ITEMS, it); renderItems(); vibrate(5);
 });
+async function saveItemEdit() {
+    const row = document.querySelector('#items-wrap .item-row[data-id="' + editingItemId + '"]');
+    const it = items.find(i => i.id === editingItemId);
+    if (!row || !it) { editingItemId = null; return; }
+    const text = row.querySelector('.ei-text').value.trim();
+    if (!text) { toast('Item name required', 'error'); return; }
+    it.text = text;
+    it.apt = row.querySelector('.ei-apt').value.trim();
+    await sPut(ITEMS, it);
+    editingItemId = null;
+    await loadItems(); renderItems(); toast('Updated', 'success'); vibrate(10);
+}
+document.getElementById('items-wrap').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('ei-text') || e.key === 'Enter' && e.target.classList.contains('ei-apt')) { e.preventDefault(); saveItemEdit(); }
+});
 document.getElementById('items-wrap').addEventListener('click', async (e) => {
+    const ed = e.target.closest('.edit-item');
+    if (ed) { editingItemId = ed.dataset.id; renderItems(); const t = document.querySelector('#items-wrap .ei-text'); if (t) t.focus(); return; }
+    if (e.target.closest('.cancel-item')) { editingItemId = null; renderItems(); return; }
+    if (e.target.closest('.save-item')) { await saveItemEdit(); return; }
     const x = e.target.closest('.rm-item');
     if (x) { await sDel(ITEMS, x.dataset.id); await loadItems(); renderItems(); vibrate(8); return; }
     if (e.target.classList.contains('item-text')) { e.target.closest('.item-row').querySelector('input').click(); }
@@ -1044,10 +1226,11 @@ function setTab(t) {
     currentTab = t;
     currentFilter = 'all';
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-    document.getElementById('logs-view').classList.toggle('hidden', t === 'items');
+    document.getElementById('logs-view').classList.toggle('hidden', t === 'items' || t === 'calendar');
     document.getElementById('items-view').classList.toggle('hidden', t !== 'items');
-    $fab.classList.toggle('hidden', t === 'items');
-    if (t === 'items') { renderItems(); } else { renderFilters(); renderList(); }
+    document.getElementById('cal-view').classList.toggle('hidden', t !== 'calendar');
+    $fab.classList.toggle('hidden', t === 'items' || t === 'calendar');
+    if (t === 'items') { renderItems(); } else if (t === 'calendar') { renderCalendar(); } else { renderFilters(); renderList(); }
     vibrate(5);
 }
 document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
@@ -1194,6 +1377,126 @@ document.getElementById('rs-file').addEventListener('change', async (e) => {
     } catch (err) { toast('Restore failed: invalid file', 'error'); }
 });
 
+/* ===== Theme ===== */
+function applyTheme(t) {
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', t === 'light' ? '#F5F4F0' : '#0C0C0C');
+    const ic = document.querySelector('#theme-btn i');
+    if (ic) ic.className = t === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+}
+document.getElementById('theme-btn').addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+    try { localStorage.setItem('ml_theme', next); } catch (e) {}
+    vibrate(5);
+});
+(function () { let t = 'dark'; try { t = localStorage.getItem('ml_theme') === 'light' ? 'light' : 'dark'; } catch (e) {} applyTheme(t); })();
+
+/* ===== Merge ===== */
+function openMerge(log) {
+    const k = aptKey(log), ty = log.type || 'log';
+    const group = logs.filter(l => (l.type || 'log') === ty && l.status !== 'completed' && aptKey(l) === k)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    document.getElementById('merge-title').textContent = `Merge Apt ${log.apartment}`;
+    document.getElementById('merge-list').innerHTML = group.map(l => `
+        <label class="chk-pill" style="justify-content: flex-start; text-align: left; font-size: 13px; padding: 10px 12px; align-items: flex-start;">
+            <input type="checkbox" class="mg-chk" data-id="${l.id}" checked style="margin-top: 2px !important;">
+            <span class="task-text" style="font-weight: 500;">${esc((l.task || '').slice(0, 140))}<br><span class="font-mono" style="font-size: 10px; color: var(--muted);">${fmtDate(l.createdAt)}${(l.images || []).length ? ' · ' + l.images.length + ' photo' + (l.images.length > 1 ? 's' : '') : ''}</span></span>
+        </label>`).join('');
+    document.getElementById('merge-modal').classList.remove('hidden');
+    vibrate(10);
+}
+document.getElementById('merge-cancel').addEventListener('click', () => document.getElementById('merge-modal').classList.add('hidden'));
+document.getElementById('merge-confirm').addEventListener('click', async () => {
+    const ids = Array.from(document.querySelectorAll('#merge-list .mg-chk')).filter(c => c.checked).map(c => c.dataset.id);
+    if (ids.length < 2) { toast('Select at least 2 logs', 'error'); return; }
+    try {
+        const sel = logs.filter(l => ids.includes(l.id)).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        const base = sel[0];
+        const seen = new Set(), lines = [];
+        sel.forEach(l => (l.task || '').split('\n').forEach(raw => {
+            const t = raw.trim().replace(/^•\s*/, '');
+            if (t && !seen.has(t.toLowerCase())) { seen.add(t.toLowerCase()); lines.push(t); }
+        }));
+        const task = lines.length > 1 ? lines.map(t => '• ' + t).join('\n') : (lines[0] || base.task);
+        const who = Array.from(new Set(sel.map(l => (l.requestedBy || '').trim()).filter(Boolean))).join(', ');
+        const dues = sel.map(l => l.dueAt).filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
+        const isMR = (base.type || 'log') === 'makeready';
+        const merged = Object.assign({}, base, {
+            task, requestedBy: who,
+            status: sel.some(l => l.status === 'active') ? 'active' : 'suspended',
+            dueAt: dues[0] || null,
+            pinned: sel.some(l => l.pinned),
+            checks: isMR ? { paint: sel.every(l => l.checks && l.checks.paint), clean: sel.every(l => l.checks && l.checks.clean), appliance: sel.every(l => l.checks && l.checks.appliance) } : undefined,
+            images: [].concat(...sel.map(l => l.images || [])),
+            notified: [],
+            updatedAt: new Date().toISOString()
+        });
+        await dbPut(merged);
+        for (const l of sel.slice(1)) await dbDelete(l.id);
+        await loadLogs(); renderFilters(); renderList();
+        document.getElementById('merge-modal').classList.add('hidden');
+        toast(`${sel.length} logs merged`, 'success'); vibrate(20); checkDue();
+    } catch (e) { toast('Merge failed', 'error'); }
+});
+
+/* ===== Calendar ===== */
+let calMonth = (function () { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; })();
+function dayKey(d) { d = new Date(d); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+let calSel = dayKey(new Date());
+function fmtTime(iso) { const d = new Date(iso); const h = d.getHours(); return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+function calColor(l) {
+    if (l.status === 'completed') return 'var(--completed)';
+    if (l.status === 'active' && new Date(l.dueAt) < new Date()) return 'var(--danger)';
+    return (l.type === 'makeready') ? '#38BDF8' : 'var(--accent)';
+}
+function renderCalendar() {
+    const byDay = {};
+    logs.forEach(l => { if (l.dueAt) { const k = dayKey(l.dueAt); (byDay[k] = byDay[k] || []).push(l); } });
+    document.getElementById('cal-title').textContent = calMonth.toLocaleString('en', { month: 'long', year: 'numeric' });
+    const y = calMonth.getFullYear(), m = calMonth.getMonth();
+    const lead = calMonth.getDay(), days = new Date(y, m + 1, 0).getDate();
+    const todayK = dayKey(new Date());
+    let html = '';
+    for (let i = 0; i < lead; i++) html += '<div class="cal-day blank"></div>';
+    for (let d = 1; d <= days; d++) {
+        const k = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const L = byDay[k] || [];
+        const dots = L.slice(0, 3).map(l => `<span class="cal-dot" style="background: ${calColor(l)};"></span>`).join('') + (L.length > 3 ? '<span style="font-size:9px;line-height:6px;">+</span>' : '');
+        html += `<button type="button" class="cal-day ${k === todayK ? 'today' : ''} ${k === calSel ? 'sel' : ''}" data-k="${k}"><span>${d}</span><span class="cal-dots">${dots}</span></button>`;
+    }
+    document.getElementById('cal-grid').innerHTML = html;
+    const list = (byDay[calSel] || []).sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt));
+    const [sy, sm, sd] = calSel.split('-').map(Number);
+    const label = new Date(sy, sm - 1, sd).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+    document.getElementById('cal-day-title').textContent = `${label} · ${list.length} task${list.length !== 1 ? 's' : ''}`;
+    document.getElementById('cal-day-list').innerHTML = list.length ? list.map(l => `
+        <div class="cal-item" data-id="${l.id}" style="--c: ${calColor(l)};">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="apt-tag">${esc(l.apartment)}</span>
+                <span class="cal-type">${l.type === 'makeready' ? 'Make Ready' : 'Task'}</span>
+                <span class="status-badge ${l.status}">${l.status}</span>
+                <span class="ml-auto text-xs font-mono" style="color: var(--muted);">${fmtTime(l.dueAt)}</span>
+            </div>
+            <p class="task-text text-sm font-medium" style="color: var(--fg);">${esc(l.task)}</p>
+        </div>`).join('') : '<p class="text-sm py-4 text-center" style="color: var(--muted);">No tasks due this day</p>';
+}
+document.getElementById('cal-grid').addEventListener('click', (e) => {
+    const b = e.target.closest('.cal-day'); if (!b || !b.dataset.k) return;
+    calSel = b.dataset.k; renderCalendar(); vibrate(5);
+});
+document.getElementById('cal-day-list').addEventListener('click', (e) => {
+    const c = e.target.closest('.cal-item'); if (!c) return;
+    const log = logs.find(l => l.id === c.dataset.id); if (log) openEditSheet(log);
+});
+document.getElementById('cal-prev').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
+document.getElementById('cal-next').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
+document.getElementById('cal-today').addEventListener('click', () => {
+    const d = new Date(); calMonth = new Date(d.getFullYear(), d.getMonth(), 1); calSel = dayKey(d); renderCalendar();
+});
+
 /* ===== Init ===== */
 async function init() {
     await requestPersist();
@@ -1202,7 +1505,7 @@ async function init() {
     await loadLogs();
     await loadItems();
     const t = new URLSearchParams(location.search).get('tab');
-    setTab(['logs', 'makeready', 'items'].includes(t) ? t : 'logs');
+    setTab(['logs', 'makeready', 'items', 'calendar'].includes(t) ? t : 'logs');
     if (logs.length > 0) toast(`${logs.length} log${logs.length > 1 ? 's' : ''} loaded from device storage`, 'info');
     if (logs.length === 0 && items.length === 0) toast('No data found. Tap restore icon to load backup file', 'info');
     updateBellIndicator();
