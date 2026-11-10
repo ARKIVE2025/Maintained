@@ -1,5 +1,5 @@
 /* MaintainLog service worker: offline cache + due-date notifications */
-const CACHE = 'maintainlog-v3';
+const CACHE = 'maintainlog-v4';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const DB_NAME = 'MaintainLogDB';
 // [stage, offset ms from due time]
@@ -17,8 +17,11 @@ self.addEventListener('activate', (e) => {
     );
 });
 
+// Firebase / backend calls must never be cached or intercepted
+const BYPASS = /^(firestore|identitytoolkit|securetoken|firebaseinstallations)\.googleapis\.com$|cloudfunctions\.net$|\.run\.app$|firebaseio\.com$/;
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
+    if (BYPASS.test(new URL(e.request.url).hostname)) return;
     e.respondWith(
         caches.match(e.request, { ignoreSearch: true }).then((hit) => {
             const net = fetch(e.request).then((res) => {
