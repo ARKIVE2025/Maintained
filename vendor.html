@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C0C0C">
+<title>Vendor Jobs · Villas at Old Monrovia</title>
+<script>try{if(localStorage.getItem('vp_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
+<style>
+:root{--bg:#0C0C0C;--card:#161616;--elevated:#1F1F1F;--fg:#F5F5F4;--muted:#8A8A85;--border:#2A2A2A;--accent:#F59E0B;--accent-dim:rgba(245,158,11,.14);--good:#22C55E;--bad:#EF4444;--blue:#38BDF8;--warn:#FB923C}
+[data-theme="light"]{--bg:#F5F4F0;--card:#FFF;--elevated:#EFEDE7;--fg:#1C1917;--muted:#78716C;--border:#DEDBD3;--accent:#D97706;--accent-dim:rgba(217,119,6,.12);--good:#15803D;--bad:#B91C1C;--blue:#0369A1;--warn:#C2410C}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:40px}
+.hidden{display:none!important}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+header h1{font-size:17px;margin:0;flex:1;line-height:1.2}
+header small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.ib{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--fg);font-size:16px}
+main{padding:14px 16px;max-width:560px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+input[type=tel]{width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--border);background:var(--elevated);color:var(--fg);font-size:17px;margin:10px 0}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:700;font-size:15px;background:var(--accent);color:#0C0C0C}
+.btn.alt{background:var(--elevated);color:var(--fg);border:1px solid var(--border)}
+.btn.sm{padding:10px;font-size:13px}
+.err{color:var(--bad);font-size:13px;min-height:18px}
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.sum div{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 4px;text-align:center}
+.sum b{display:block;font-size:20px}
+.sum span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.job.urgent{border-color:var(--bad)}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.apt{font-size:20px;font-weight:800;font-family:ui-monospace,Menlo,monospace}
+.tag{font-size:11px;font-weight:800;padding:3px 8px;border-radius:7px;letter-spacing:.4px}
+.tag.u{background:rgba(239,68,68,.15);color:var(--bad)}
+.tag.u2{background:rgba(251,146,60,.15);color:var(--warn)}
+.move{font-weight:700;font-size:13px;color:var(--blue)}
+.move.hot{color:var(--bad)}
+.task{white-space:pre-line;word-break:break-word;margin:6px 0 10px;font-weight:500}
+.tasks{display:flex;gap:8px;margin-bottom:10px}
+.pill{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 6px;border-radius:12px;background:var(--elevated);border:1.5px solid var(--border);font-weight:700;font-size:14px}
+.pill input{width:20px;height:20px;accent-color:var(--good)}
+.pill.done{border-color:var(--good);background:rgba(34,197,94,.12)}
+.st{font-size:12px;font-weight:700;margin-bottom:8px}
+.banner{background:rgba(251,146,60,.14);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;margin-bottom:8px}
+.plan{white-space:pre-wrap;font-size:14px;line-height:1.5}
+.sec{font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--muted);margin:16px 0 8px;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<section id="login" class="hidden"><main>
+  <div class="card" style="margin-top:40px">
+    <h1 style="margin:0 0 4px;font-size:20px">Vendor Jobs</h1>
+    <div style="color:var(--muted);font-size:13px">The Villas at Old Monrovia</div>
+    <input id="phone" type="tel" inputmode="tel" placeholder="Your phone number" autocomplete="tel">
+    <div id="lerr" class="err"></div>
+    <button id="go" class="btn">View my jobs</button>
+  </div>
+</main></section>
+
+<section id="app" class="hidden">
+  <header>
+    <h1 id="who">Jobs<small id="today"></small></h1>
+    <button id="theme" class="ib" title="Dark / Light">☀</button>
+    <button id="logout" class="ib" title="Log out">⎋</button>
+  </header>
+  <main>
+    <div class="sum" id="sum"></div>
+    <button id="plan-btn" class="btn" style="margin-bottom:12px">Plan My Schedule</button>
+    <div id="plan-card" class="card hidden"><div class="plan" id="plan"></div></div>
+    <div id="list"></div>
+  </main>
+</section>
+
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+const norm = (v) => String(v || '').replace(/\D/g, '').slice(-10);
+const FB_OK = !!(window.ML_FIREBASE && window.ML_FIREBASE.apiKey && !/^PASTE/i.test(window.ML_FIREBASE.apiKey) && window.firebase);
+let fdb = null, phone = '', unsub = null, jobs = [], vendorName = '';
+
+function daysUntil(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d) - t) / 86400000);
+}
+const fmtMD = (str) => { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en', { month: 'short', day: 'numeric' }); };
+const allDone = (j) => (!j.needsPaint || j.paintDone) && (!j.needsClean || j.cleanDone);
+
+function setTheme(t) {
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
+    $('theme').textContent = t === 'light' ? '☾' : '☀';
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'light' ? '#F5F4F0' : '#0C0C0C';
+}
+$('theme').onclick = () => {
+    const n = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    setTheme(n); try { localStorage.setItem('vp_theme', n); } catch (e) {}
+};
+setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+
+async function login(p, silent) {
+    $('lerr').textContent = '';
+    p = norm(p);
+    if (p.length !== 10) { $('lerr').textContent = 'Enter your 10-digit phone number'; return; }
+    if (!FB_OK) { $('lerr').textContent = 'App not set up yet. Contact the office.'; return; }
+    try {
+        if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
+        await firebase.auth().signInAnonymously();
+        fdb = firebase.firestore();
+        const v = await fdb.collection('vendors').doc(p).get();
+        if (!v.exists) { $('lerr').textContent = 'Number not found. Contact the office.'; if (silent) { $('login').classList.remove('hidden'); } return; }
+        phone = p; vendorName = (v.data() || {}).name || '';
+        try { localStorage.setItem('vp_phone', p); } catch (e) {}
+        $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+        $('who').firstChild.textContent = vendorName ? vendorName + ' · Jobs' : 'Jobs';
+        $('today').textContent = new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
+        listen();
+    } catch (e) { $('login').classList.remove('hidden'); $('lerr').textContent = 'Connection problem. Try again.'; }
+}
+$('go').onclick = () => login($('phone').value, false);
+$('phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') login($('phone').value, false); });
+$('logout').onclick = () => {
+    try { localStorage.removeItem('vp_phone'); } catch (e) {}
+    if (unsub) unsub(); location.reload();
+};
+
+function listen() {
+    if (unsub) unsub();
+    unsub = fdb.collection('jobs').where('vendor', '==', phone).onSnapshot((snap) => {
+        jobs = snap.docs.map(d => d.data()).filter(j => !j.closed);
+        render();
+        // opening the list marks new jobs as viewed
+        jobs.filter(j => j.vendorStatus === 'sent').forEach(j => {
+            fdb.collection('jobs').doc(j.id).update({ vendorStatus: 'viewed', viewedAt: new Date().toISOString(), lastBy: 'vendor' }).catch(() => {});
+        });
+    }, () => { $('list').innerHTML = '<div class="card err">Connection problem. Pull to refresh.</div>'; });
+}
+
+function sorted() {
+    return jobs.slice().sort((a, b) =>
+        (allDone(a) - allDone(b)) ||
+        ((b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)) ||
+        ((a.moveIn || '9999') < (b.moveIn || '9999') ? -1 : (a.moveIn || '9999') > (b.moveIn || '9999') ? 1 : 0));
+}
+
+function render() {
+    const open = jobs.filter(j => !allDone(j));
+    const soon = open.filter(j => j.moveIn && daysUntil(j.moveIn) <= 7).length;
+    const needAck = open.filter(j => j.vendorStatus !== 'acknowledged').length;
+    $('sum').innerHTML = `
+        <div><b>${open.length}</b><span>Open</span></div>
+        <div><b style="color:var(--bad)">${open.filter(j => j.urgent).length}</b><span>Urgent</span></div>
+        <div><b style="color:var(--blue)">${soon}</b><span>Move-in 7d</span></div>
+        <div><b style="color:var(--warn)">${needAck}</b><span>To ack</span></div>`;
+    const list = sorted();
+    if (!list.length) { $('list').innerHTML = '<div class="card" style="text-align:center;color:var(--muted)">No jobs right now.</div>'; return; }
+    let html = '', doneHdr = false;
+    list.forEach(j => {
+        const done = allDone(j);
+        if (done && !doneHdr) { html += '<div class="sec">Completed</div>'; doneHdr = true; }
+        const dn = j.moveIn ? daysUntil(j.moveIn) : null;
+        const hot = dn !== null && dn <= 3 && !done;
+        const mv = dn === null ? '' : `<span class="move ${hot ? 'hot' : ''}">Move-in ${fmtMD(j.moveIn)} · ${dn === 0 ? 'TODAY' : dn > 0 ? 'in ' + dn + ' day' + (dn > 1 ? 's' : '') : Math.abs(dn) + ' day' + (Math.abs(dn) > 1 ? 's' : '') + ' ago'}</span>`;
+        const ack = j.vendorStatus === 'acknowledged';
+        html += `<div class="card job ${j.urgent && !done ? 'urgent' : ''}" style="${done ? 'opacity:.6' : ''}">
+            <div class="top"><span class="apt">Apt ${esc(j.apt)}</span>
+              ${j.urgent ? '<span class="tag u">URGENT</span>' : ''}
+              ${j.vendorStatus === 'updated' ? '<span class="tag u2">UPDATED</span>' : ''}</div>
+            ${mv ? `<div style="margin-bottom:6px">${mv}</div>` : ''}
+            ${j.vendorStatus === 'updated' ? '<div class="banner">The office changed this job. Please review and acknowledge again.</div>' : ''}
+            <div class="task">${esc(j.task)}</div>
+            ${(j.needsPaint || j.needsClean) ? `<div class="tasks">
+               ${j.needsPaint ? `<label class="pill ${j.paintDone ? 'done' : ''}"><input type="checkbox" data-id="${j.id}" data-k="paintDone" ${j.paintDone ? 'checked' : ''}>Paint done</label>` : ''}
+               ${j.needsClean ? `<label class="pill ${j.cleanDone ? 'done' : ''}"><input type="checkbox" data-id="${j.id}" data-k="cleanDone" ${j.cleanDone ? 'checked' : ''}>Clean done</label>` : ''}
+            </div>` : ''}
+            ${ack ? `<div class="st" style="color:var(--good)">✓ Acknowledged</div>` :
+              `<button class="btn sm ackb" data-id="${j.id}">${j.vendorStatus === 'updated' ? 'Acknowledge update' : 'Acknowledge job'}</button>`}
+        </div>`;
+    });
+    $('list').innerHTML = html;
+}
+
+$('list').addEventListener('change', (e) => {
+    const cb = e.target.closest('input[type=checkbox]'); if (!cb) return;
+    fdb.collection('jobs').doc(cb.dataset.id).update({ [cb.dataset.k]: cb.checked, lastBy: 'vendor', updatedAt: new Date().toISOString() }).catch(() => { cb.checked = !cb.checked; });
+});
+$('list').addEventListener('click', (e) => {
+    const b = e.target.closest('.ackb'); if (!b) return;
+    b.disabled = true;
+    fdb.collection('jobs').doc(b.dataset.id).update({ vendorStatus: 'acknowledged', ackedAt: new Date().toISOString(), lastBy: 'vendor' }).catch(() => { b.disabled = false; });
+});
+
+$('plan-btn').addEventListener('click', async () => {
+    const btn = $('plan-btn');
+    btn.disabled = true; btn.textContent = 'Planning…';
+    $('plan-card').classList.remove('hidden');
+    $('plan').textContent = 'Building your schedule…';
+    try {
+        const open = sorted().filter(j => !allDone(j)).slice(0, 40).map(j => ({
+            apt: j.apt, moveIn: j.moveIn || null, urgent: !!j.urgent, needsPaint: !!j.needsPaint, needsClean: !!j.needsClean,
+            paintDone: !!j.paintDone, cleanDone: !!j.cleanDone, acknowledged: j.vendorStatus === 'acknowledged', notes: String(j.task || '').slice(0, 200)
+        }));
+        if (!open.length) { $('plan').textContent = 'No open jobs. Nothing to schedule.'; return; }
+        const now = new Date();
+        const today = now.toLocaleDateString('en-CA') + ' (' + now.toLocaleDateString('en', { weekday: 'long' }) + ')';
+        const fn = firebase.app().functions('us-central1').httpsCallable('planSchedule');
+        const res = await fn({ today, jobs: open });
+        $('plan').textContent = (res.data && res.data.plan) || 'No plan returned.';
+    } catch (e) {
+        $('plan').textContent = 'Plan unavailable right now. Use the list below, sorted by priority.';
+    } finally { btn.disabled = false; btn.textContent = 'Refresh My Schedule'; }
+});
+
+(function start() {
+    let p = ''; try { p = localStorage.getItem('vp_phone') || ''; } catch (e) {}
+    if (p) login(p, true); else $('login').classList.remove('hidden');
+})();
+</script>
+</body>
+</html>
