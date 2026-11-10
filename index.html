@@ -204,6 +204,10 @@
         }
         .chk-pill:has(input:checked) { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.10); }
 
+        [data-theme="light"] [style*="#38BDF8"] { color: #0369A1 !important; }
+        [data-theme="light"] [style*="#22C55E"] { color: #15803D !important; }
+        [data-theme="light"] [style*="#F59E0B"] { color: #B45309 !important; }
+        [data-theme="light"] [style*="#EF4444"] { color: #B91C1C !important; }
         .task-text { white-space: pre-line; word-break: break-word; }
         .merge-btn {
             margin-top: 10px; width: 100%; padding: 8px 10px; border-radius: 8px;
@@ -385,6 +389,24 @@
                     <label class="chk-pill"><input type="checkbox" id="f-appliance"><span>Appliance Check</span></label>
                 </div>
             </div>
+            <div id="mr-wrap" class="hidden">
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">MOVE-IN DATE</label>
+                        <input id="f-movein" type="date">
+                    </div>
+                    <div class="flex gap-2">
+                        <label class="chk-pill"><input type="checkbox" id="f-urgent"><span>Urgent</span></label>
+                        <label class="chk-pill"><input type="checkbox" id="f-needpaint"><span>Needs Paint</span></label>
+                        <label class="chk-pill"><input type="checkbox" id="f-needclean"><span>Needs Clean</span></label>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">SEND TO VENDOR</label>
+                        <select id="f-vendor"><option value="">Don't send</option></select>
+                        <button type="button" id="manage-vendors" class="text-xs font-semibold mt-2" style="color: var(--accent);"><i class="fa-solid fa-truck"></i> Manage vendors</button>
+                    </div>
+                </div>
+            </div>
             <!-- NEW: Due Date / Time -->
             <div>
                 <label class="text-xs font-semibold mb-1.5 block" style="color: var(--muted);">DUE DATE / TIME (OPTIONAL)</label>
@@ -428,6 +450,23 @@
     </div>
 </div>
 
+<!-- Vendor Modal -->
+<div id="vendor-modal" class="hidden fixed inset-0 z-[80] modal-bg flex items-end justify-center safe-bottom">
+    <div class="w-full max-w-md rounded-t-2xl p-5 max-h-[85dvh] overflow-y-auto" style="background: var(--card); border-top: 1px solid var(--border);">
+        <h3 class="text-lg font-bold mb-1">Vendors</h3>
+        <p class="text-sm mb-3" style="color: var(--muted);">Vendors log in to the vendor page with their phone number.</p>
+        <div id="vendor-list" class="flex flex-col gap-2 mb-4"></div>
+        <input id="vm-name" type="text" placeholder="Vendor name" class="mb-2">
+        <input id="vm-phone" type="tel" placeholder="Phone number" class="mb-3">
+        <button type="button" id="vm-add" class="w-full py-3 rounded-xl font-semibold text-sm mb-3" style="background: var(--accent); color: #0C0C0C;">Add vendor</button>
+        <div class="text-xs mb-3" style="color: var(--muted);">Vendor page link:<br><span id="vm-link" class="font-mono" style="word-break: break-all; color: var(--fg);"></span></div>
+        <div class="flex gap-3">
+            <button type="button" id="vm-copy" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--elevated); color: var(--fg);">Copy link</button>
+            <button type="button" id="vm-close" class="flex-1 py-3 rounded-xl font-semibold text-sm" style="background: var(--elevated); color: var(--fg);">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Merge Modal -->
 <div id="merge-modal" class="hidden fixed inset-0 z-[60] modal-bg flex items-end justify-center safe-bottom">
     <div class="w-full max-w-md rounded-t-2xl p-5 max-h-[85dvh] overflow-y-auto" style="background: var(--card); border-top: 1px solid var(--border);">
@@ -448,6 +487,10 @@
     <div id="viewer-label" class="mt-3 text-center px-6"></div>
 </div>
 
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ===== IndexedDB Setup ===== */
 const DB_NAME = 'MaintainLogDB';
@@ -486,12 +529,12 @@ function dbGetAll() {
     });
 }
 
-function dbPut(log) {
+function dbPut(log, opts) {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE, 'readwrite');
         const s = tx.objectStore(STORE);
         const req = s.put(log);
-        req.onsuccess = () => { markDirty(); resolve(req.result); };
+        req.onsuccess = () => { markDirty(); if (!(opts && opts.remote)) { try { syncJob(log); } catch (e) {} } resolve(req.result); };
         req.onerror = () => reject(req.error);
     });
 }
@@ -501,7 +544,7 @@ function dbDelete(id) {
         const tx = db.transaction(STORE, 'readwrite');
         const s = tx.objectStore(STORE);
         const req = s.delete(id);
-        req.onsuccess = () => { markDirty(); resolve(); };
+        req.onsuccess = () => { markDirty(); try { dropJob(id); } catch (e) {} resolve(); };
         req.onerror = () => reject(req.error);
     });
 }
@@ -723,6 +766,7 @@ function renderFilters() {
 }
 
 /* ===== Render Log List ===== */
+function moveCmp(a, b) { const x = a.moveIn || '9999', y = b.moveIn || '9999'; return x < y ? -1 : x > y ? 1 : 0; }
 let dupMap = {};
 function aptKey(l) { return (l.apartment || '').trim().toLowerCase(); }
 function tabType() { return currentTab === 'makeready' ? 'makeready' : 'log'; }
@@ -736,7 +780,7 @@ function getFilteredLogs() {
         filtered = filtered.filter(l => l.apartment.toLowerCase().includes(q) || l.task.toLowerCase().includes(q) || (l.requestedBy || '').toLowerCase().includes(q));
     }
     // Sort by updatedAt descending
-    filtered.sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || (new Date(b.updatedAt) - new Date(a.updatedAt)));
+    filtered.sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || (currentTab === 'makeready' ? (((b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)) || moveCmp(a, b)) : 0) || (new Date(b.updatedAt) - new Date(a.updatedAt)));
     return filtered;
 }
 
@@ -767,6 +811,25 @@ function renderCard(log, idx) {
     const delay = Math.min(idx * 50, 300);
     const ck = log.checks || {};
     const checksHtml = (log.type === 'makeready') ? `<div class="flex gap-2 mb-2">` + [['paint', 'Paint'], ['clean', 'Clean'], ['appliance', 'Appliance Check']].map(([k, n]) => `<label class="chk-pill"><input type="checkbox" class="mr-chk" data-k="${k}" ${ck[k] ? 'checked' : ''}><span>${n}</span></label>`).join('') + `</div>` : '';
+    let mrInfoHtml = '';
+    if (log.type === 'makeready' && (log.moveIn || log.urgent || log.needsPaint || log.needsClean)) {
+        const dn = log.moveIn ? daysUntil(log.moveIn) : null;
+        const open = (log.needsPaint && !ck.paint) || (log.needsClean && !ck.clean);
+        const hot = dn !== null && dn <= 3 && open && log.status !== 'completed';
+        const moveTxt = dn === null ? '' : `Move-in ${fmtMD(log.moveIn)} · ${dn === 0 ? 'today' : dn > 0 ? 'in ' + dn + 'd' : Math.abs(dn) + 'd ago'}`;
+        const needs = [log.needsPaint ? 'Paint' : '', log.needsClean ? 'Clean' : ''].filter(Boolean).join(' + ');
+        mrInfoHtml = `<div class="flex flex-wrap items-center gap-2 mb-2 text-xs font-semibold">
+            ${log.urgent ? '<span class="px-2 py-0.5 rounded-md" style="background: rgba(239,68,68,0.15); color: #EF4444;">URGENT</span>' : ''}
+            ${moveTxt ? `<span class="font-mono" style="color: ${hot ? '#EF4444' : '#38BDF8'};"><i class="fa-solid fa-key"></i> ${moveTxt}</span>` : ''}
+            ${needs ? `<span style="color: var(--muted);">Needs: ${needs}</span>` : ''}
+        </div>`;
+    }
+    let vendorHtml = '';
+    if (log.type === 'makeready' && log.vendor) {
+        const vs = ({ sent: ['Sent', '#38BDF8'], viewed: ['Viewed', '#F59E0B'], acknowledged: ['Acknowledged', '#22C55E'], updated: ['Updated · not re-acknowledged', '#FB923C'] })[log.vendorStatus || 'sent'] || ['Sent', '#38BDF8'];
+        const when = log.vendorStatus === 'acknowledged' && log.ackedAt ? ' · ' + fmtShort(log.ackedAt) : (log.vendorStatus === 'viewed' && log.viewedAt ? ' · ' + fmtShort(log.viewedAt) : '');
+        vendorHtml = `<div class="flex items-center gap-2 mt-2 text-xs font-semibold" style="color: ${vs[1]};"><i class="fa-solid fa-truck"></i> ${esc(vendorName(log.vendor))} · ${vs[0]}${when}</div>`;
+    }
     const dupN = log.status !== 'completed' ? (dupMap[aptKey(log)] || 0) : 0;
     const dupHtml = dupN >= 2 ? `<button type="button" class="merge-btn"><i class="fa-solid fa-code-merge"></i> Merge duplicates (${dupN})</button>` : '';
     // NEW: Due date badge
@@ -788,7 +851,9 @@ function renderCard(log, idx) {
             </div>
         </div>
         <p class="task-text text-sm font-medium leading-snug mb-2" style="color: var(--fg);">${esc(log.task)}</p>
+        ${mrInfoHtml}
         ${checksHtml}
+        ${vendorHtml}
         <div class="flex items-center gap-3 text-xs flex-wrap" style="color: var(--muted);">
             ${log.requestedBy ? `<span><i class="fa-solid fa-user mr-1"></i>${esc(log.requestedBy)}</span>` : ''}
             <span><i class="fa-regular fa-clock mr-1"></i>${fmtDate(log.updatedAt)}</span>
@@ -910,6 +975,7 @@ function setFormType(type) {
     document.getElementById('f-type').value = type;
     document.getElementById('who-wrap').classList.toggle('hidden', type === 'makeready');
     document.getElementById('checks-wrap').classList.toggle('hidden', type !== 'makeready');
+    document.getElementById('mr-wrap').classList.toggle('hidden', type !== 'makeready');
 }
 
 function openAddSheet() {
@@ -922,6 +988,9 @@ function openAddSheet() {
     document.getElementById('f-status').value = 'active';
     $fDue.value = '';
     ['paint', 'clean', 'appliance'].forEach(k => { document.getElementById('f-' + k).checked = false; });
+    document.getElementById('f-movein').value = '';
+    ['urgent', 'needpaint', 'needclean'].forEach(k => { document.getElementById('f-' + k).checked = false; });
+    renderVendorOptions('');
     setFormType(type);
     pendingImages = [];
     renderImagePreviews();
@@ -941,6 +1010,11 @@ function openEditSheet(log) {
     document.getElementById('f-status').value = log.status;
     const lc = log.checks || {};
     ['paint', 'clean', 'appliance'].forEach(k => { document.getElementById('f-' + k).checked = !!lc[k]; });
+    document.getElementById('f-movein').value = log.moveIn || '';
+    document.getElementById('f-urgent').checked = !!log.urgent;
+    document.getElementById('f-needpaint').checked = !!log.needsPaint;
+    document.getElementById('f-needclean').checked = !!log.needsClean;
+    renderVendorOptions(log.vendor || '');
     // NEW: populate due date (convert ISO -> datetime-local)
     if (log.dueAt) {
         const d = new Date(log.dueAt);
@@ -1032,7 +1106,8 @@ $form.addEventListener('submit', async (e) => {
     }));
 
     const existing = logs.find(l => l.id === id);
-    const log = {
+    const mr = type === 'makeready';
+    const log = Object.assign({}, existing || {}, {
         id,
         apartment: apt,
         task,
@@ -1045,8 +1120,13 @@ $form.addEventListener('submit', async (e) => {
         notified: existing ? (existing.notified || []) : [],
         createdAt: existing ? existing.createdAt : now,
         updatedAt: now,
-        images
-    };
+        images,
+        moveIn: mr ? (document.getElementById('f-movein').value || null) : null,
+        urgent: mr && document.getElementById('f-urgent').checked,
+        needsPaint: mr && document.getElementById('f-needpaint').checked,
+        needsClean: mr && document.getElementById('f-needclean').checked,
+        vendor: mr ? (document.getElementById('f-vendor').value || null) : null
+    });
 
     try {
         await dbPut(log);
@@ -1429,6 +1509,11 @@ document.getElementById('merge-confirm').addEventListener('click', async () => {
             status: sel.some(l => l.status === 'active') ? 'active' : 'suspended',
             dueAt: dues[0] || null,
             pinned: sel.some(l => l.pinned),
+            moveIn: sel.map(l => l.moveIn).filter(Boolean).sort()[0] || null,
+            urgent: sel.some(l => l.urgent),
+            needsPaint: sel.some(l => l.needsPaint),
+            needsClean: sel.some(l => l.needsClean),
+            vendor: (sel.find(l => l.vendor) || {}).vendor || null,
             checks: isMR ? { paint: sel.every(l => l.checks && l.checks.paint), clean: sel.every(l => l.checks && l.checks.clean), appliance: sel.every(l => l.checks && l.checks.appliance) } : undefined,
             images: [].concat(...sel.map(l => l.images || [])),
             notified: [],
@@ -1454,7 +1539,11 @@ function calColor(l) {
 }
 function renderCalendar() {
     const byDay = {};
-    logs.forEach(l => { if (l.dueAt) { const k = dayKey(l.dueAt); (byDay[k] = byDay[k] || []).push(l); } });
+    const put = (k, e) => { (byDay[k] = byDay[k] || []).push(e); };
+    logs.forEach(l => {
+        if (l.dueAt) put(dayKey(l.dueAt), { l, kind: 'due' });
+        if (l.moveIn) put(l.moveIn, { l, kind: 'move' });
+    });
     document.getElementById('cal-title').textContent = calMonth.toLocaleString('en', { month: 'long', year: 'numeric' });
     const y = calMonth.getFullYear(), m = calMonth.getMonth();
     const lead = calMonth.getDay(), days = new Date(y, m + 1, 0).getDate();
@@ -1464,24 +1553,25 @@ function renderCalendar() {
     for (let d = 1; d <= days; d++) {
         const k = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         const L = byDay[k] || [];
-        const dots = L.slice(0, 3).map(l => `<span class="cal-dot" style="background: ${calColor(l)};"></span>`).join('') + (L.length > 3 ? '<span style="font-size:9px;line-height:6px;">+</span>' : '');
+        const dots = L.slice(0, 3).map(e => `<span class="cal-dot" style="background: ${e.kind === 'move' ? '#22C55E' : calColor(e.l)};"></span>`).join('') + (L.length > 3 ? '<span style="font-size:9px;line-height:6px;">+</span>' : '');
         html += `<button type="button" class="cal-day ${k === todayK ? 'today' : ''} ${k === calSel ? 'sel' : ''}" data-k="${k}"><span>${d}</span><span class="cal-dots">${dots}</span></button>`;
     }
     document.getElementById('cal-grid').innerHTML = html;
-    const list = (byDay[calSel] || []).sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt));
+    const list = (byDay[calSel] || []).sort((a, b) => (a.kind === 'move' ? -1 : new Date(a.l.dueAt).getTime()) - (b.kind === 'move' ? -1 : new Date(b.l.dueAt).getTime()));
     const [sy, sm, sd] = calSel.split('-').map(Number);
     const label = new Date(sy, sm - 1, sd).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
-    document.getElementById('cal-day-title').textContent = `${label} · ${list.length} task${list.length !== 1 ? 's' : ''}`;
-    document.getElementById('cal-day-list').innerHTML = list.length ? list.map(l => `
-        <div class="cal-item" data-id="${l.id}" style="--c: ${calColor(l)};">
+    document.getElementById('cal-day-title').textContent = `${label} · ${list.length} item${list.length !== 1 ? 's' : ''}`;
+    document.getElementById('cal-day-list').innerHTML = list.length ? list.map(e => { const l = e.l; return `
+        <div class="cal-item" data-id="${l.id}" style="--c: ${e.kind === 'move' ? '#22C55E' : calColor(l)};">
             <div class="flex items-center gap-2 mb-1">
                 <span class="apt-tag">${esc(l.apartment)}</span>
-                <span class="cal-type">${l.type === 'makeready' ? 'Make Ready' : 'Task'}</span>
+                <span class="cal-type">${e.kind === 'move' ? 'Move-in' : (l.type === 'makeready' ? 'Make Ready' : 'Task')}</span>
+                ${l.urgent ? '<span class="cal-type" style="color: #EF4444;">Urgent</span>' : ''}
                 <span class="status-badge ${l.status}">${l.status}</span>
-                <span class="ml-auto text-xs font-mono" style="color: var(--muted);">${fmtTime(l.dueAt)}</span>
+                <span class="ml-auto text-xs font-mono" style="color: var(--muted);">${e.kind === 'move' ? 'All day' : fmtTime(l.dueAt)}</span>
             </div>
             <p class="task-text text-sm font-medium" style="color: var(--fg);">${esc(l.task)}</p>
-        </div>`).join('') : '<p class="text-sm py-4 text-center" style="color: var(--muted);">No tasks due this day</p>';
+        </div>`; }).join('') : '<p class="text-sm py-4 text-center" style="color: var(--muted);">Nothing scheduled this day</p>';
 }
 document.getElementById('cal-grid').addEventListener('click', (e) => {
     const b = e.target.closest('.cal-day'); if (!b || !b.dataset.k) return;
@@ -1497,6 +1587,154 @@ document.getElementById('cal-today').addEventListener('click', () => {
     const d = new Date(); calMonth = new Date(d.getFullYear(), d.getMonth(), 1); calSel = dayKey(d); renderCalendar();
 });
 
+/* ===== Vendor sync (Firebase) ===== */
+const FB_OK = !!(window.ML_FIREBASE && window.ML_FIREBASE.apiKey && !/^PASTE/i.test(window.ML_FIREBASE.apiKey) && window.firebase);
+let fdb = null, vendors = [], firstVendors = true;
+function normPhone(v) { return String(v || '').replace(/\D/g, '').slice(-10); }
+function fmtPhone(p) { return p && p.length === 10 ? `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}` : (p || ''); }
+function vendorName(p) { const v = vendors.find(x => x.phone === p); return (v && v.name) || fmtPhone(p); }
+function daysUntil(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d) - t) / 86400000);
+}
+function fmtMD(str) { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en', { month: 'short', day: 'numeric' }); }
+
+function renderVendorOptions(sel) {
+    const el = document.getElementById('f-vendor');
+    const keep = sel !== undefined ? sel : el.value;
+    el.innerHTML = '<option value="">Don\'t send</option>' + vendors.map(v => `<option value="${v.phone}">${esc(v.name || fmtPhone(v.phone))}</option>`).join('');
+    if (keep && !vendors.some(v => v.phone === keep)) el.insertAdjacentHTML('beforeend', `<option value="${keep}">${esc(fmtPhone(keep))}</option>`);
+    el.value = keep || '';
+}
+function renderVendorList() {
+    const el = document.getElementById('vendor-list');
+    if (!el) return;
+    el.innerHTML = vendors.length ? vendors.map(v => `
+        <div class="flex items-center gap-2 p-3 rounded-xl" style="background: var(--elevated);">
+            <i class="fa-solid fa-truck" style="color: var(--accent);"></i>
+            <div class="flex-1 min-w-0"><div class="text-sm font-semibold">${esc(v.name || 'Vendor')}</div><div class="text-xs font-mono" style="color: var(--muted);">${fmtPhone(v.phone)}</div></div>
+            <button type="button" class="vm-rm w-8 h-8 rounded-md" data-p="${v.phone}" style="color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+        </div>`).join('') : '<p class="text-sm" style="color: var(--muted);">No vendors yet.</p>';
+}
+document.getElementById('manage-vendors').addEventListener('click', () => {
+    if (!FB_OK) { toast('Vendor sync not set up yet', 'error'); return; }
+    renderVendorList();
+    document.getElementById('vm-link').textContent = new URL('vendor.html', location.href).href;
+    document.getElementById('vendor-modal').classList.remove('hidden');
+});
+document.getElementById('vm-close').addEventListener('click', () => document.getElementById('vendor-modal').classList.add('hidden'));
+document.getElementById('vm-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(document.getElementById('vm-link').textContent); toast('Link copied', 'success'); } catch (e) { toast('Copy failed', 'error'); }
+});
+document.getElementById('vm-add').addEventListener('click', async () => {
+    const name = document.getElementById('vm-name').value.trim();
+    const phone = normPhone(document.getElementById('vm-phone').value);
+    if (!fdb) { toast('Vendor sync offline', 'error'); return; }
+    if (phone.length !== 10) { toast('Enter a 10-digit phone number', 'error'); return; }
+    try {
+        await fdb.collection('vendors').doc(phone).set({ phone, name: name || 'Vendor' });
+        document.getElementById('vm-name').value = ''; document.getElementById('vm-phone').value = '';
+        toast('Vendor added', 'success');
+    } catch (e) { toast('Could not add vendor', 'error'); }
+});
+document.getElementById('vendor-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('.vm-rm'); if (!b || !fdb) return;
+    try { await fdb.collection('vendors').doc(b.dataset.p).delete(); } catch (err) { toast('Could not remove', 'error'); }
+});
+
+let _rt = null;
+function scheduleRender() { clearTimeout(_rt); _rt = setTimeout(() => { if (currentTab !== 'items') renderList(); }, 150); }
+
+async function fbInit() {
+    if (!FB_OK) return;
+    try {
+        firebase.initializeApp(window.ML_FIREBASE);
+        await firebase.auth().signInAnonymously();
+        fdb = firebase.firestore();
+        fdb.collection('vendors').onSnapshot(snap => {
+            vendors = snap.docs.map(d => d.data());
+            renderVendorOptions(); renderVendorList(); scheduleRender();
+            if (firstVendors) { firstVendors = false; logs.forEach(l => syncJob(l)); }
+        });
+        fdb.collection('jobs').onSnapshot(snap => snap.docChanges().forEach(ch => { if (ch.type !== 'removed') applyJob(ch.doc.data()); }));
+    } catch (e) { console.warn('Firebase', e); toast('Vendor sync offline', 'error'); }
+}
+
+function jobSig(l) {
+    return JSON.stringify([l.apartment, l.task, l.moveIn || '', !!l.urgent, !!l.needsPaint, !!l.needsClean, l.vendor || '', !!(l.checks && l.checks.paint), !!(l.checks && l.checks.clean), l.status === 'completed']);
+}
+function jobCore(l) {
+    return JSON.stringify([l.apartment, l.task, l.moveIn || '', !!l.urgent, !!l.needsPaint, !!l.needsClean, l.vendor || '']);
+}
+async function syncJob(log) {
+    if (!fdb || (log.type || 'log') !== 'makeready') return;
+    if (!log.vendor) {
+        if (log.jobSent) {
+            await fdb.collection('jobs').doc(log.id).delete();
+            ['jobSent', 'jobSig', 'jobCore', 'jobVendor', 'vendorStatus', 'viewedAt', 'ackedAt'].forEach(k => { delete log[k]; });
+            const cur = logs.find(x => x.id === log.id);
+            if (cur && cur !== log) ['jobSent', 'jobSig', 'jobCore', 'jobVendor', 'vendorStatus', 'viewedAt', 'ackedAt'].forEach(k => { delete cur[k]; });
+            await dbPut(log, { remote: true });
+            const cur3 = logs.find(x => x.id === log.id);
+            if (cur3 && cur3 !== log) { ['jobSent', 'jobSig', 'jobCore', 'jobVendor', 'vendorStatus', 'viewedAt', 'ackedAt'].forEach(k => { delete cur3[k]; }); await dbPut(cur3, { remote: true }); }
+        }
+        return;
+    }
+    const sig = jobSig(log), core = jobCore(log);
+    if (log.jobSent && log.jobSig === sig && log.jobVendor === log.vendor) return;
+    const v = vendors.find(x => x.phone === log.vendor);
+    const c = log.checks || {};
+    const now = new Date().toISOString();
+    const fresh = !log.jobSent || log.jobVendor !== log.vendor;
+    const data = {
+        id: log.id, apt: log.apartment, task: log.task, moveIn: log.moveIn || null,
+        urgent: !!log.urgent, needsPaint: !!log.needsPaint, needsClean: !!log.needsClean,
+        paintDone: !!c.paint, cleanDone: !!c.clean, vendor: log.vendor, vendorName: v ? v.name : '',
+        closed: log.status === 'completed', lastBy: 'owner', updatedAt: now
+    };
+    let status = log.vendorStatus || 'sent';
+    if (fresh) { data.vendorStatus = 'sent'; data.sentAt = now; data.viewedAt = null; data.ackedAt = null; status = 'sent'; }
+    else if (log.jobCore !== core) { data.vendorStatus = 'updated'; data.ackedAt = null; status = 'updated'; }
+    await fdb.collection('jobs').doc(log.id).set(data, { merge: true });
+    const flags = { jobSent: true, jobSig: sig, jobCore: core, jobVendor: log.vendor, vendorStatus: status };
+    if (fresh) { flags.viewedAt = null; flags.ackedAt = null; }
+    Object.assign(log, flags);
+    const cur = logs.find(x => x.id === log.id);
+    if (cur && cur !== log) Object.assign(cur, flags);
+    await dbPut(log, { remote: true });
+    const cur2 = logs.find(x => x.id === log.id);
+    if (cur2 && cur2 !== log) { Object.assign(cur2, flags); await dbPut(cur2, { remote: true }); }
+    scheduleRender();
+}
+function dropJob(id) {
+    if (!fdb) return;
+    const l = logs.find(x => x.id === id);
+    if (l && l.jobSent) fdb.collection('jobs').doc(id).delete().catch(() => {});
+}
+async function applyJob(j) {
+    const log = logs.find(l => l.id === j.id);
+    if (!log || !log.vendor || log.vendor !== j.vendor) return;
+    let ch = false;
+    const prev = log.vendorStatus;
+    if (j.vendorStatus && log.vendorStatus !== j.vendorStatus) { log.vendorStatus = j.vendorStatus; ch = true; }
+    if ((log.viewedAt || null) !== (j.viewedAt || null)) { log.viewedAt = j.viewedAt || null; ch = true; }
+    if ((log.ackedAt || null) !== (j.ackedAt || null)) { log.ackedAt = j.ackedAt || null; ch = true; }
+    let doneMsg = '';
+    if (j.lastBy === 'vendor') {
+        const c = Object.assign({ paint: false, clean: false, appliance: false }, log.checks || {});
+        if (typeof j.paintDone === 'boolean' && c.paint !== j.paintDone) { c.paint = j.paintDone; ch = true; if (j.paintDone) doneMsg = `Apt ${log.apartment}: paint done`; }
+        if (typeof j.cleanDone === 'boolean' && c.clean !== j.cleanDone) { c.clean = j.cleanDone; ch = true; if (j.cleanDone) doneMsg = `Apt ${log.apartment}: clean done`; }
+        log.checks = c;
+    }
+    if (!ch) return;
+    log.jobSig = jobSig(log);
+    await dbPut(log, { remote: true });
+    if (prev && prev !== log.vendorStatus && log.vendorStatus === 'acknowledged') toast(`Apt ${log.apartment} acknowledged by vendor`, 'success');
+    if (doneMsg) toast(doneMsg, 'success');
+    scheduleRender();
+}
+
 /* ===== Init ===== */
 async function init() {
     await requestPersist();
@@ -1504,6 +1742,7 @@ async function init() {
     await migrateItems();
     await loadLogs();
     await loadItems();
+    fbInit();
     const t = new URLSearchParams(location.search).get('tab');
     setTab(['logs', 'makeready', 'items', 'calendar'].includes(t) ? t : 'logs');
     if (logs.length > 0) toast(`${logs.length} log${logs.length > 1 ? 's' : ''} loaded from device storage`, 'info');
