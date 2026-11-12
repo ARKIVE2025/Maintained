@@ -110,6 +110,7 @@ async function login(p, silent) {
     if (!FB_OK) { $('lerr').textContent = 'App not set up yet. Contact the office.'; return; }
     try {
         if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
+        try { await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
         await firebase.auth().signInAnonymously();
         fdb = firebase.firestore();
         const v = await fdb.collection('vendors').doc(p).get();
