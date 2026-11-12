@@ -1,5 +1,5 @@
 /* MaintainLog service worker: offline cache + due-date notifications */
-const CACHE = 'maintainlog-v4';
+const CACHE = 'maintainlog-v5';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const DB_NAME = 'MaintainLogDB';
 // [stage, offset ms from due time]
@@ -21,7 +21,18 @@ self.addEventListener('activate', (e) => {
 const BYPASS = /^(firestore|identitytoolkit|securetoken|firebaseinstallations)\.googleapis\.com$|cloudfunctions\.net$|\.run\.app$|firebaseio\.com$/;
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
-    if (BYPASS.test(new URL(e.request.url).hostname)) return;
+    const u = new URL(e.request.url);
+    if (BYPASS.test(u.hostname)) return;
+    if (u.origin === location.origin) {
+        // own files: always try the network first so updates show immediately
+        e.respondWith(
+            fetch(e.request, { cache: 'no-cache' }).then((res) => {
+                if (res && res.ok) { const cp = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, cp)); }
+                return res;
+            }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || (e.request.mode === 'navigate' ? caches.match('./index.html') : undefined)))
+        );
+        return;
+    }
     e.respondWith(
         caches.match(e.request, { ignoreSearch: true }).then((hit) => {
             const net = fetch(e.request).then((res) => {
