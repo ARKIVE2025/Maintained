@@ -1668,7 +1668,13 @@ function fbInit() {
     fbPromise = (async () => {
         try {
             if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
-            await Promise.race([firebase.auth().signInAnonymously(), new Promise((_, rej) => setTimeout(() => rej({ code: 'sign-in timed out' }), 20000))]);
+            await Promise.race([
+                (async () => {
+                    try { await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
+                    await firebase.auth().signInAnonymously();
+                })(),
+                new Promise((_, rej) => setTimeout(() => rej({ code: 'sign-in timed out' }), 30000))
+            ]);
             fdb = firebase.firestore();
             fbError = '';
             fdb.collection('vendors').onSnapshot(snap => {
