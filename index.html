@@ -454,7 +454,8 @@
 <div id="vendor-modal" class="hidden fixed inset-0 z-[80] modal-bg flex items-end justify-center safe-bottom">
     <div class="w-full max-w-md rounded-t-2xl p-5 max-h-[85dvh] overflow-y-auto" style="background: var(--card); border-top: 1px solid var(--border);">
         <h3 class="text-lg font-bold mb-1">Vendors</h3>
-        <p class="text-sm mb-3" style="color: var(--muted);">Vendors log in to the vendor page with their phone number.</p>
+        <p class="text-sm mb-1" style="color: var(--muted);">Vendors log in to the vendor page with their phone number.</p>
+        <div id="vm-status" class="text-xs font-semibold mb-3"></div>
         <div id="vendor-list" class="flex flex-col gap-2 mb-4"></div>
         <input id="vm-name" type="text" placeholder="Vendor name" class="mb-2">
         <input id="vm-phone" type="tel" placeholder="Phone number" class="mb-3">
@@ -1626,10 +1627,14 @@ function renderVendorList() {
 document.getElementById('manage-vendors').addEventListener('click', async () => {
     const pr = fbProblem();
     if (pr) { toast('Vendor sync: ' + pr, 'error'); return; }
-    if (!fdb) await fbInit();
     renderVendorList();
     document.getElementById('vm-link').textContent = new URL('vendor.html', location.href).href;
     document.getElementById('vendor-modal').classList.remove('hidden');
+    const st = document.getElementById('vm-status');
+    st.style.color = 'var(--muted)'; st.textContent = fdb ? 'Connected' : 'Connecting…';
+    await fbInit();
+    st.style.color = fdb ? 'var(--active)' : 'var(--danger)';
+    st.textContent = fdb ? 'Connected' : 'Not connected: ' + (fbError || 'unknown error');
 });
 document.getElementById('vm-close').addEventListener('click', () => document.getElementById('vendor-modal').classList.add('hidden'));
 document.getElementById('vm-copy').addEventListener('click', async () => {
@@ -1654,19 +1659,29 @@ document.getElementById('vendor-list').addEventListener('click', async (e) => {
 let _rt = null;
 function scheduleRender() { clearTimeout(_rt); _rt = setTimeout(() => { if (currentTab !== 'items') renderList(); }, 150); }
 
-async function fbInit() {
-    if (fdb || fbProblem()) return;
-    try {
-        firebase.initializeApp(window.ML_FIREBASE);
-        await firebase.auth().signInAnonymously();
-        fdb = firebase.firestore();
-        fdb.collection('vendors').onSnapshot(snap => {
-            vendors = snap.docs.map(d => d.data());
-            renderVendorOptions(); renderVendorList(); scheduleRender();
-            if (firstVendors) { firstVendors = false; logs.forEach(l => syncJob(l)); }
-        });
-        fdb.collection('jobs').onSnapshot(snap => snap.docChanges().forEach(ch => { if (ch.type !== 'removed') applyJob(ch.doc.data()); }));
-    } catch (e) { console.warn('Firebase', e); toast('Vendor sync offline', 'error'); }
+let fbPromise = null, fbError = '';
+function fbInit() {
+    if (fbPromise) return fbPromise;
+    if (fdb || fbProblem()) return Promise.resolve();
+    fbPromise = (async () => {
+        try {
+            if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
+            await firebase.auth().signInAnonymously();
+            fdb = firebase.firestore();
+            fbError = '';
+            fdb.collection('vendors').onSnapshot(snap => {
+                vendors = snap.docs.map(d => d.data());
+                renderVendorOptions(); renderVendorList(); scheduleRender();
+                if (firstVendors) { firstVendors = false; logs.forEach(l => syncJob(l)); }
+            }, err => { fbError = err.code || err.message; const st = document.getElementById('vm-status'); if (st) { st.style.color = 'var(--danger)'; st.textContent = 'Database error: ' + fbError; } });
+            fdb.collection('jobs').onSnapshot(snap => snap.docChanges().forEach(ch => { if (ch.type !== 'removed') applyJob(ch.doc.data()); }), () => {});
+        } catch (e) {
+            fbError = e.code || e.message || 'error';
+            fbPromise = null;
+            console.warn('Firebase', e);
+        }
+    })();
+    return fbPromise;
 }
 
 function jobSig(l) {
