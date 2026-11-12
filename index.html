@@ -1588,7 +1588,13 @@ document.getElementById('cal-today').addEventListener('click', () => {
 });
 
 /* ===== Vendor sync (Firebase) ===== */
-const FB_OK = !!(window.ML_FIREBASE && window.ML_FIREBASE.apiKey && !/^PASTE/i.test(window.ML_FIREBASE.apiKey) && window.firebase);
+function fbProblem() {
+    const c = window.ML_FIREBASE;
+    if (!c) return 'config file not loaded';
+    if (!c.apiKey || /^PASTE/i.test(c.apiKey)) return 'config still has PASTE values';
+    if (!window.firebase) return 'Firebase library not loaded';
+    return '';
+}
 let fdb = null, vendors = [], firstVendors = true;
 function normPhone(v) { return String(v || '').replace(/\D/g, '').slice(-10); }
 function fmtPhone(p) { return p && p.length === 10 ? `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}` : (p || ''); }
@@ -1617,8 +1623,10 @@ function renderVendorList() {
             <button type="button" class="vm-rm w-8 h-8 rounded-md" data-p="${v.phone}" style="color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
         </div>`).join('') : '<p class="text-sm" style="color: var(--muted);">No vendors yet.</p>';
 }
-document.getElementById('manage-vendors').addEventListener('click', () => {
-    if (!FB_OK) { toast('Vendor sync not set up yet', 'error'); return; }
+document.getElementById('manage-vendors').addEventListener('click', async () => {
+    const pr = fbProblem();
+    if (pr) { toast('Vendor sync: ' + pr, 'error'); return; }
+    if (!fdb) await fbInit();
     renderVendorList();
     document.getElementById('vm-link').textContent = new URL('vendor.html', location.href).href;
     document.getElementById('vendor-modal').classList.remove('hidden');
@@ -1647,7 +1655,7 @@ let _rt = null;
 function scheduleRender() { clearTimeout(_rt); _rt = setTimeout(() => { if (currentTab !== 'items') renderList(); }, 150); }
 
 async function fbInit() {
-    if (!FB_OK) return;
+    if (fdb || fbProblem()) return;
     try {
         firebase.initializeApp(window.ML_FIREBASE);
         await firebase.auth().signInAnonymously();
