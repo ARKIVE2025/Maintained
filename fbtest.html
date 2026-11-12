@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firebase test</title>
+<style>body{font-family:sans-serif;padding:16px;background:#111;color:#eee;font-size:16px}div{margin:10px 0;padding:10px;border-radius:8px;background:#222;word-break:break-word}.ok{border-left:5px solid #22c55e}.bad{border-left:5px solid #ef4444}</style></head>
+<body><h2>Firebase test</h2><div id="out"></div>
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const out=document.getElementById('out');
+function log(ok,t){const d=document.createElement('div');d.className=ok?'ok':'bad';d.textContent=(ok?'OK: ':'FAILED: ')+t;out.appendChild(d);}
+(async()=>{
+  log(!!window.ML_FIREBASE,'1. config file loaded'+(window.ML_FIREBASE?' (project '+window.ML_FIREBASE.projectId+')':''));
+  log(!!window.firebase,'2. Firebase library loaded');
+  if(!window.ML_FIREBASE||!window.firebase)return;
+  try{firebase.initializeApp(window.ML_FIREBASE);log(true,'3. app started');}catch(e){log(false,'3. app start: '+(e.code||'')+' '+e.message);return;}
+  try{await firebase.auth().signInAnonymously();log(true,'4. anonymous sign-in');}catch(e){log(false,'4. anonymous sign-in: '+(e.code||'')+' '+e.message);return;}
+  try{const s=await firebase.firestore().collection('vendors').get();log(true,'5. database read ('+s.size+' vendors)');}catch(e){log(false,'5. database read: '+(e.code||'')+' '+e.message);return;}
+  try{await firebase.firestore().collection('vendors').doc('_test').set({t:1});await firebase.firestore().collection('vendors').doc('_test').delete();log(true,'6. database write');}catch(e){log(false,'6. database write: '+(e.code||'')+' '+e.message);}
+})();
+</script></body></html>
