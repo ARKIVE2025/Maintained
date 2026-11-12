@@ -1643,7 +1643,9 @@ document.getElementById('vm-copy').addEventListener('click', async () => {
 document.getElementById('vm-add').addEventListener('click', async () => {
     const name = document.getElementById('vm-name').value.trim();
     const phone = normPhone(document.getElementById('vm-phone').value);
-    if (!fdb) { toast('Vendor sync offline', 'error'); return; }
+    if (phone.length !== 10) { toast('Enter a 10-digit phone number', 'error'); return; }
+    if (!fdb) { toast('Connecting…', 'info'); await fbInit(); }
+    if (!fdb) { toast('Not connected: ' + (fbError || 'timeout'), 'error'); return; }
     if (phone.length !== 10) { toast('Enter a 10-digit phone number', 'error'); return; }
     try {
         await fdb.collection('vendors').doc(phone).set({ phone, name: name || 'Vendor' });
@@ -1666,7 +1668,7 @@ function fbInit() {
     fbPromise = (async () => {
         try {
             if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
-            await firebase.auth().signInAnonymously();
+            await Promise.race([firebase.auth().signInAnonymously(), new Promise((_, rej) => setTimeout(() => rej({ code: 'sign-in timed out' }), 20000))]);
             fdb = firebase.firestore();
             fbError = '';
             fdb.collection('vendors').onSnapshot(snap => {
