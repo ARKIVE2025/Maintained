@@ -490,7 +490,6 @@
 
 <script src="firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ===== IndexedDB Setup ===== */
@@ -1668,14 +1667,11 @@ function fbInit() {
     fbPromise = (async () => {
         try {
             if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
+                        fdb = firebase.firestore();
             await Promise.race([
-                (async () => {
-                    try { await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
-                    await firebase.auth().signInAnonymously();
-                })(),
-                new Promise((_, rej) => setTimeout(() => rej({ code: 'sign-in timed out' }), 30000))
+                fdb.collection('vendors').limit(1).get(),
+                new Promise((_, rej) => setTimeout(() => rej({ code: 'database timed out' }), 20000))
             ]);
-            fdb = firebase.firestore();
             fbError = '';
             fdb.collection('vendors').onSnapshot(snap => {
                 vendors = snap.docs.map(d => d.data());
@@ -1685,6 +1681,7 @@ function fbInit() {
             fdb.collection('jobs').onSnapshot(snap => snap.docChanges().forEach(ch => { if (ch.type !== 'removed') applyJob(ch.doc.data()); }), () => {});
         } catch (e) {
             fbError = e.code || e.message || 'error';
+            fdb = null;
             fbPromise = null;
             console.warn('Firebase', e);
         }
