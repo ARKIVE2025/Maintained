@@ -110,10 +110,8 @@ async function login(p, silent) {
     if (!FB_OK) { $('lerr').textContent = 'App not set up yet. Contact the office.'; return; }
     try {
         if (!firebase.apps.length) firebase.initializeApp(window.ML_FIREBASE);
-        try { await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
-        await firebase.auth().signInAnonymously();
         fdb = firebase.firestore();
-        const v = await fdb.collection('vendors').doc(p).get();
+        const v = await Promise.race([fdb.collection('vendors').doc(p).get(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000))]);
         if (!v.exists) { $('lerr').textContent = 'Number not found. Contact the office.'; if (silent) { $('login').classList.remove('hidden'); } return; }
         phone = p; vendorName = (v.data() || {}).name || '';
         try { localStorage.setItem('vp_phone', p); } catch (e) {}
@@ -209,6 +207,7 @@ $('plan-btn').addEventListener('click', async () => {
         if (!open.length) { $('plan').textContent = 'No open jobs. Nothing to schedule.'; return; }
         const now = new Date();
         const today = now.toLocaleDateString('en-CA') + ' (' + now.toLocaleDateString('en', { weekday: 'long' }) + ')';
+        try { await Promise.race([firebase.auth().signInAnonymously(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))]); } catch (e) {}
         const fn = firebase.app().functions('us-central1').httpsCallable('planSchedule');
         const res = await fn({ today, jobs: open });
         $('plan').textContent = (res.data && res.data.plan) || 'No plan returned.';
